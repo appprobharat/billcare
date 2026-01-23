@@ -1,0 +1,158 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class EditCategoryBottomSheet extends StatefulWidget {
+  final String initialName;
+  final String initialType;
+  final int categoryId;
+
+  const EditCategoryBottomSheet({
+    super.key,
+    required this.initialName,
+    required this.initialType,
+    required this.categoryId,
+  });
+
+  @override
+  State<EditCategoryBottomSheet> createState() =>
+      _EditCategoryBottomSheetState();
+}
+
+class _EditCategoryBottomSheetState extends State<EditCategoryBottomSheet> {
+  late TextEditingController nameCtrl;
+  String? selectedType;
+  bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    nameCtrl = TextEditingController(text: widget.initialName);
+    selectedType = widget.initialType;
+  }
+
+  Future<void> updateCategory() async {
+    if (nameCtrl.text.trim().isEmpty || selectedType == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please enter all fields")));
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString("authToken") ?? "";
+
+      if (token.isEmpty) {
+        setState(() => isLoading = false);
+        return;
+      }
+
+      final url = Uri.parse(
+        "https://gst.billcare.in/api/inc_exp/category/update",
+      );
+      print("📤 Sending to backend:");
+      print({
+        "CategoryId": widget.categoryId.toString(),
+        "Type": selectedType!,
+        "Category": nameCtrl.text.trim(),
+      });
+      print(
+        "📤 Headers: {Authorization: Bearer $token, Accept: application/json}",
+      );
+
+      final response = await http.post(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+        body: {
+          "CategoryId": widget.categoryId.toString(),
+          "Type": selectedType!,
+          "Category": nameCtrl.text.trim(),
+        },
+      );
+
+      print("🔵 Update Status: ${response.statusCode}");
+      print("🔵 Update Body: ${response.body}");
+
+      setState(() => isLoading = false);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Category updated successfully")),
+        );
+        Navigator.pop(context, {
+          "categoryName": nameCtrl.text.trim(),
+          "type": selectedType,
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update: ${response.body}")),
+        );
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+      print("❌ Update Error: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: MediaQuery.of(context).viewInsets,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Edit Category",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(
+                labelText: "Category Name",
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            DropdownButtonFormField(
+              value: selectedType,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: "Type",
+              ),
+              items: ["Income", "Expenses"]
+                  .map(
+                    (type) => DropdownMenuItem(value: type, child: Text(type)),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => selectedType = value),
+            ),
+
+            const SizedBox(height: 20),
+
+            isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: updateCategory,
+                    child: const Text("Save Changes"),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+}

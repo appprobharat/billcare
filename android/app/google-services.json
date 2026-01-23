@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "875554031066",
+    "project_id": "billcare-6636a",
+    "storage_bucket": "billcare-6636a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:875554031066:android:68c200f67ab4ce05e5ece3",
+        "android_client_info": {
+          "package_name": "com.techinnovationapp.billcare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCmFT2EJAPZYsF7V-in2F_kF_HsVLUp40"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
