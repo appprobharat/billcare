@@ -21,12 +21,25 @@ class ApiService {
     String password,
   ) async {
     final url = Uri.parse("$baseUrl/login");
-    final res = await http.post(
-      url,
-      headers: _headers(contentType: 'application/json'),
-      body: json.encode({"username": username, "password": password}),
-    );
-    return json.decode(res.body);
+
+    try {
+      final res = await http
+          .post(
+            url,
+            headers: _headers(contentType: 'application/json'),
+            body: json.encode({"username": username, "password": password}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = json.decode(res.body);
+        return data;
+      } else {
+        return {"status": false, "message": "Login failed (${res.statusCode})"};
+      }
+    } catch (e) {
+      return {"status": false, "message": "Network error: $e"};
+    }
   }
 
   // Save Token API
@@ -35,12 +48,27 @@ class ApiService {
     String authToken,
   ) async {
     final url = Uri.parse("$baseUrl/save_token");
-    final res = await http.post(
-      url,
-      headers: _headers(token: authToken, contentType: 'application/json'),
-      body: json.encode({"fcm_token": token}),
-    );
-    return json.decode(res.body);
+
+    try {
+      final res = await http
+          .post(
+            url,
+            headers: _headers(
+              token: authToken,
+              contentType: 'application/json',
+            ),
+            body: json.encode({"fcm_token": token}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (res.body.isEmpty) {
+        return {"status": false, "message": "Empty response"};
+      }
+
+      return json.decode(res.body);
+    } catch (e) {
+      return {"status": false, "message": "Token save error: $e"};
+    }
   }
 
   static Future<List<StateModel>> getStates(String token) async {
@@ -327,6 +355,7 @@ class ApiService {
       return false;
     }
   }
+
   // Items Section
   static Future<List<Map<String, dynamic>>> fetchCategories(
     String token,
@@ -446,24 +475,21 @@ class ApiService {
 
   static Future<List<Map<String, dynamic>>> getClients(String token) async {
     final url = Uri.parse("$baseUrl/get_client");
-    print("Calling API for clients: $url");
+
     try {
-      final res = await http.post(
-        url,
-        headers: _headers(),
-        body: json.encode({}),
-      );
-      print("Clients API Response Status Code: ${res.statusCode}");
-      print("Clients API Response Body: ${res.body}");
+      final res = await http
+          .post(
+            url,
+            headers: _headers(token: token, contentType: 'application/json'),
+            body: json.encode({}),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
+
         if (data is List) {
-          // The API returns a direct list of clients
           return List<Map<String, dynamic>>.from(data);
-        } else {
-          print("Clients API: Received data is not a list.");
-          return [];
         }
       }
       return [];
@@ -472,6 +498,7 @@ class ApiService {
       return [];
     }
   }
+
   //for adding addnewsaleitem in sales
 
   static Future<List<dynamic>> fetchItems(String token) async {

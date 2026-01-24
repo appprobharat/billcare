@@ -15,6 +15,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -35,7 +36,6 @@ class _LoginPageState extends State<LoginPage> {
       if (loginRes['status'] == true) {
         final prefs = await SharedPreferences.getInstance();
 
-        // Extracting and storing necessary data from the response
         final token = loginRes['token'] as String;
         final type = loginRes['type'] as String;
         final profile = loginRes['profile'] as Map<String, dynamic>;
@@ -43,51 +43,69 @@ class _LoginPageState extends State<LoginPage> {
         final company = profile['company'] as String;
         final photo = profile['photo'] as String;
 
-        // Store data in SharedPreferences
         await prefs.setString("username", username);
         await prefs.setString("authToken", token);
         await prefs.setString("userType", type);
         await prefs.setString("userName", name);
-        await prefs.setString(
-          "companyName",
-          company,
-        ); 
+        await prefs.setString("companyName", company);
         await prefs.setString("userPhotoUrl", photo);
 
-        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        // 🔥 iOS-safe FCM token handling
+        String? fcmToken =
+            await FirebaseMessaging.instance.getToken();
 
-        final tokenRes = await ApiService.saveToken(
-          fcmToken!,
-          token, // Use the extracted token
-        );
-        print("Token Save Response: $tokenRes");
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          final tokenRes = await ApiService.saveToken(
+            fcmToken,
+            token,
+          );
+          debugPrint("📲 Token Save Response: $tokenRes");
+        } else {
+          debugPrint("⚠ FCM token not available yet");
+        }
+
+        if (!mounted) return;
 
         _showSnackBar("Login Successful ✅");
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => DashboardScreen()),
+          MaterialPageRoute(
+            builder: (_) => const DashboardScreen(),
+          ),
         );
       } else {
         _showSnackBar(loginRes['message'] ?? "Login failed");
       }
     } catch (e) {
       _showSnackBar("Error: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-    setState(() => _isLoading = false);
   }
 
   void _launchURL() async {
-    final Uri url = Uri.parse('https://www.techinnovationapp.in');
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      throw 'Could not launch $url';
+    final Uri url =
+        Uri.parse('https://www.techinnovationapp.in');
+
+    try {
+      if (!await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      )) {
+        _showSnackBar("Could not open website");
+      }
+    } catch (e) {
+      _showSnackBar("Error opening website");
     }
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -99,7 +117,6 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo
               Image.asset('assets/images/logo.png', height: 80),
               const SizedBox(height: 10),
 
@@ -135,7 +152,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 20),
 
-              // Password Field
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -164,31 +180,36 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 25),
 
-              // Login Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 14),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: _isLoading ? null : _login,
+                  onPressed:
+                      _isLoading ? null : _login,
                   child: _isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(
                               Colors.white,
                             ),
                           ),
                         )
-                      : Text(
+                      : const Text(
                           "Login",
-                          style: TextStyle(fontSize: 16, color: Colors.white),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
                         ),
                 ),
               ),
@@ -198,11 +219,11 @@ class _LoginPageState extends State<LoginPage> {
               Wrap(
                 alignment: WrapAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     "Designed & Developed by ",
                     style: TextStyle(fontSize: 12),
                   ),
-                  Text(
+                  const Text(
                     "TechInnovationApp",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -210,13 +231,19 @@ class _LoginPageState extends State<LoginPage> {
                       fontSize: 12,
                     ),
                   ),
-                  SizedBox(width: 5),
-                  Text("Visit our website", style: TextStyle(fontSize: 12)),
+                  const SizedBox(width: 5),
+                  const Text(
+                    "Visit our website",
+                    style: TextStyle(fontSize: 12),
+                  ),
                   GestureDetector(
                     onTap: _launchURL,
-                    child: Text(
+                    child: const Text(
                       "www.techinnovationapp.in",
-                      style: TextStyle(color: Colors.blue, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
