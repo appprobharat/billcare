@@ -52,7 +52,7 @@ class _ReceiptPrintPageState extends State<ReceiptPrintPage> {
     }
 
     final data = await ApiService.getReceiptData(
-      authToken,
+      
       widget.receiptType,
       widget.receiptId,
     );

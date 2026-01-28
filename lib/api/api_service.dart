@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:billcare/screens/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:billcare/clients/model.dart';
@@ -8,11 +9,12 @@ import 'package:path_provider/path_provider.dart';
 class ApiService {
   static const String baseUrl = "https://gst.billcare.in/api";
 
-  static Map<String, String> _headers({String? token, String? contentType}) {
+  static Future<Map<String, String>> authHeaders({String? contentType}) async {
+    final token = await AuthStorage.getToken();
     return {
       if (contentType != null) 'Content-Type': contentType,
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
   }
 
@@ -26,14 +28,16 @@ class ApiService {
       final res = await http
           .post(
             url,
-            headers: _headers(contentType: 'application/json'),
+            headers: const {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
             body: json.encode({"username": username, "password": password}),
           )
           .timeout(const Duration(seconds: 15));
 
       if (res.statusCode == 200 || res.statusCode == 201) {
-        final data = json.decode(res.body);
-        return data;
+        return json.decode(res.body);
       } else {
         return {"status": false, "message": "Login failed (${res.statusCode})"};
       }
@@ -43,41 +47,36 @@ class ApiService {
   }
 
   // Save Token API
-  static Future<Map<String, dynamic>> saveToken(
-    String token,
-    String authToken,
-  ) async {
+  static Future<Map<String, dynamic>> saveToken(String fcmToken) async {
     final url = Uri.parse("$baseUrl/save_token");
 
     try {
       final res = await http
           .post(
             url,
-            headers: _headers(
-              token: authToken,
-              contentType: 'application/json',
-            ),
-            body: json.encode({"fcm_token": token}),
+            headers: await authHeaders(contentType: 'application/json'),
+            body: json.encode({"fcm_token": fcmToken}),
           )
           .timeout(const Duration(seconds: 15));
 
       if (res.body.isEmpty) {
-        return {"status": false, "message": "Empty response"};
+        return {"status": false, "message": "Empty response from server"};
       }
 
-      return json.decode(res.body);
+      return json.decode(res.body) as Map<String, dynamic>;
     } catch (e) {
       return {"status": false, "message": "Token save error: $e"};
     }
   }
 
-  static Future<List<StateModel>> getStates(String token) async {
+  static Future<List<StateModel>> getStates() async {
     final url = Uri.parse("$baseUrl/get_state");
     print("Calling API for states: $url");
     try {
       final res = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({}),
       );
       print("States API Response Status Code: ${res.statusCode}");
@@ -103,13 +102,14 @@ class ApiService {
     }
   }
 
-  static Future<List<BankModel>> getBank(String token) async {
+  static Future<List<BankModel>> getBank() async {
     final url = Uri.parse("$baseUrl/get_bank");
     print("Calling API for banks: $url");
     try {
       final res = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({}),
       );
       print("Banks API Response Status Code: ${res.statusCode}");
@@ -136,13 +136,14 @@ class ApiService {
   }
 
   // Get Client List API
-  static Future<List<dynamic>> getClientList(String token) async {
+  static Future<List<dynamic>> getClientList() async {
     final url = Uri.parse("$baseUrl/client/list");
     print("Fetching client list...");
     try {
       final res = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({}),
       );
       print("Client List API Status: ${res.statusCode}");
@@ -165,16 +166,14 @@ class ApiService {
   }
 
   // Get Client Details for Edit API
-  static Future<Map<String, dynamic>?> getClientDetails(
-    String clientId,
-    String token,
-  ) async {
+  static Future<Map<String, dynamic>?> getClientDetails(String clientId) async {
     final url = Uri.parse('$baseUrl/client/edit');
     print("Fetching client details for ID: $clientId");
     try {
       final response = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: jsonEncode({"ClientId": clientId}),
       );
       print("Client Details API Status: ${response.statusCode}");
@@ -198,95 +197,80 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>?> fetchSaleForEdit(
-    String authToken,
-    int saleId,
-  ) async {
+  static Future<Map<String, dynamic>?> fetchSaleForEdit(int saleId) async {
     final url = Uri.parse("$baseUrl/sale/edit");
 
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
+        headers: await authHeaders(contentType: 'application/json'),
         body: jsonEncode({'SaleId': saleId}),
       );
 
-      print('Edit Sale API Response Status: ${response.statusCode}');
-      print('Edit Sale API Response Body: ${response.body}');
+      debugPrint('Edit Sale API Status: ${response.statusCode}');
+      debugPrint('Edit Sale API Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return data;
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        // optional but recommended
+        await AuthStorage.logout();
+        return null;
       } else {
-        print(
-          'Failed to load sale data for editing. Status code: ${response.statusCode}',
-        );
         return null;
       }
     } catch (e) {
-      print('Error during API call: $e');
+      debugPrint('❌ fetchSaleForEdit error: $e');
       return null;
     }
   }
 
-  static Future<Map<String, dynamic>?> fetchPurchaseForEdit(
-    String authToken,
-    int purchaseId,
-  ) async {
-    final url = Uri.parse("$baseUrl/purchase/edit");
+ static Future<Map<String, dynamic>?> fetchPurchaseForEdit(
+  int purchaseId,
+) async {
+  final url = Uri.parse("$baseUrl/purchase/edit");
+
+  final res = await http.post(
+    url,
+    headers: await authHeaders(), // 🔥 token inside
+    body: jsonEncode({"PurchaseId": purchaseId}),
+  );
+
+  if (res.statusCode == 200) {
+    return jsonDecode(res.body);
+  }
+
+  if (res.statusCode == 401) {
+    await AuthStorage.logout();
+  }
+
+  throw Exception("Failed to fetch purchase");
+}
+
+  static Future<Map<String, dynamic>?> fetchSaleDetails(int saleId) async {
+    final url = Uri.parse('$baseUrl/sale/edit');
 
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-        body: jsonEncode({'PurchaseId': purchaseId}),
+        headers: await authHeaders(contentType: 'application/json'),
+        body: jsonEncode({'SaleId': saleId}),
       );
 
-      print('Edit Purchase API Response Status: ${response.statusCode}');
-      print('Edit Purchase API Response Body: ${response.body}');
+      debugPrint("📥 Sale Details Status: ${response.statusCode}");
+      debugPrint("📥 Sale Details Body: ${response.body}");
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return data;
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        // 🔐 Token expired / invalid
+        await AuthStorage.logout();
+        return null;
       } else {
-        print(
-          'Failed to load sale data for editing. Status code: ${response.statusCode}',
-        );
         return null;
       }
     } catch (e) {
-      print('Error during API call: $e');
-      return null;
-    }
-  }
-
-  static Future<Map<String, dynamic>?> fetchSaleDetails(
-    String authToken,
-    int saleId,
-  ) async {
-    final url = Uri.parse('$baseUrl/sale/edit');
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $authToken',
-    };
-    final body = jsonEncode({'SaleId': saleId});
-
-    try {
-      final response = await http.post(url, headers: headers, body: body);
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        print("Error: ${response.statusCode} - ${response.body}");
-        return null;
-      }
-    } catch (e) {
-      print("API Error: $e");
+      debugPrint("❌ fetchSaleDetails error: $e");
       return null;
     }
   }
@@ -294,30 +278,37 @@ class ApiService {
   // Store Client API (Multipart)
   static Future<bool> storeClient(
     Map<String, String> clientData,
-    String token,
     File? clientImage,
   ) async {
     try {
-      var request = http.MultipartRequest(
+      final request = http.MultipartRequest(
         'POST',
         Uri.parse("$baseUrl/client/store"),
       );
-      request.headers['Authorization'] = 'Bearer $token';
-      clientData.forEach((key, value) {
-        request.fields[key] = value;
-      });
+
+      // ✅ Auth header from SecureStorage
+      final headers = await authHeaders();
+      request.headers.addAll(headers);
+
+      // ✅ Add fields
+      request.fields.addAll(clientData);
+
+      // ✅ Add image if exists
       if (clientImage != null) {
         request.files.add(
           await http.MultipartFile.fromPath('Photo', clientImage.path),
         );
       }
-      var response = await request.send();
-      var responseBody = await response.stream.bytesToString();
-      print('Store Client API Response Status: ${response.statusCode}');
-      print('Store Client API Response Body: $responseBody');
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      debugPrint('Store Client API Status: ${response.statusCode}');
+      debugPrint('Store Client API Response: $responseBody');
+
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print('Error saving client: $e');
+      debugPrint('❌ Error saving client: $e');
       return false;
     }
   }
@@ -326,19 +317,25 @@ class ApiService {
   static Future<bool> updateClient(
     String clientId,
     Map<String, String> clientData,
-    String token,
     File? clientImage,
   ) async {
     final url = Uri.parse("$baseUrl/client/update");
+
     if (clientId.isEmpty || clientId == "0") {
-      print("❌ Invalid ClientId provided! Update aborted.");
+      debugPrint("❌ Invalid ClientId provided! Update aborted.");
       return false;
     }
+
     try {
       final request = http.MultipartRequest('POST', url);
-      request.headers.addAll(_headers(token: token));
+
+      // ✅ Auth header from SecureStorage
+      final headers = await ApiService.authHeaders();
+      request.headers.addAll(headers);
+
       request.fields['ClientId'] = clientId;
       request.fields.addAll(clientData);
+
       if (clientImage != null) {
         request.files.add(
           await http.MultipartFile.fromPath('Image', clientImage.path),
@@ -347,24 +344,25 @@ class ApiService {
 
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
-      print("Update Client API status: ${response.statusCode}");
-      print("Update Client API response: $responseBody");
+
+      debugPrint("Update Client API status: ${response.statusCode}");
+      debugPrint("Update Client API response: $responseBody");
+
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print("⚠️ Exception while updating client: $e");
+      debugPrint("⚠️ Exception while updating client: $e");
       return false;
     }
   }
 
   // Items Section
-  static Future<List<Map<String, dynamic>>> fetchCategories(
-    String token,
-  ) async {
+  static Future<List<Map<String, dynamic>>> fetchCategories() async {
     final url = Uri.parse("$baseUrl/get_category");
     try {
       final res = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({}),
       );
       if (res.statusCode == 200) {
@@ -386,13 +384,13 @@ class ApiService {
     }
   }
 
-  static Future<List<dynamic>> fetchCategoryList(String token) async {
+  static Future<List<dynamic>> fetchCategoryList() async {
     final url = Uri.parse('$baseUrl/category/list');
 
     try {
       final response = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
       );
 
       print("🟢 Category List API Status: ${response.statusCode}");
@@ -419,12 +417,13 @@ class ApiService {
     }
   }
 
-  static Future<void> storeCategory(String token, String name) async {
+  static Future<void> storeCategory(String name) async {
     final url = Uri.parse('$baseUrl/category/store');
     try {
       final response = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({'Name': name}),
       );
 
@@ -442,11 +441,7 @@ class ApiService {
   }
 
   // New method for updating a category
-  static Future<void> updateCategory(
-    String token,
-    int categoryId,
-    String newName,
-  ) async {
+  static Future<void> updateCategory(int categoryId, String newName) async {
     final url = Uri.parse('$baseUrl/category/update');
 
     if (categoryId <= 0) {
@@ -456,7 +451,8 @@ class ApiService {
     try {
       final response = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({'CategoryId': categoryId, 'Name': newName}),
       );
 
@@ -473,14 +469,15 @@ class ApiService {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getClients(String token) async {
+  static Future<List<Map<String, dynamic>>> getClients() async {
     final url = Uri.parse("$baseUrl/get_client");
 
     try {
       final res = await http
           .post(
             url,
-            headers: _headers(token: token, contentType: 'application/json'),
+            headers: await authHeaders(contentType: 'application/json'),
+
             body: json.encode({}),
           )
           .timeout(const Duration(seconds: 15));
@@ -501,100 +498,76 @@ class ApiService {
 
   //for adding addnewsaleitem in sales
 
-  static Future<List<dynamic>> fetchItems(String token) async {
+  static Future<List<dynamic>> fetchItems() async {
     final url = Uri.parse("$baseUrl/get_item");
-    print("API Request: Attempting to POST to $url");
-    print(
-      "Headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'}",
-    );
+
+    debugPrint("📡 Fetching items from $url");
 
     try {
       final res = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(contentType: 'application/json'),
         body: json.encode({}),
       );
 
-      print("API Response: Status Code ${res.statusCode}");
-      print("Response Body: ${res.body}");
+      debugPrint("📥 Status Code: ${res.statusCode}");
+      debugPrint("📥 Body: ${res.body}");
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
+
         if (data is List) {
-          print("Response format is a List.");
           return data;
         } else if (data is Map && data['data'] is List) {
-          print("Response format is a Map with a 'data' key.");
           return data['data'] as List;
+        } else {
+          throw Exception("Invalid response format");
         }
-        print("❌ Error: Invalid data format from API.");
-        throw Exception("Invalid data format from API.");
+      } else {
+        throw Exception("Failed to fetch items (${res.statusCode})");
       }
-      print("❌ Error: API returned a non-200 status code.");
-      throw Exception(
-        "Failed to fetch items with status code: ${res.statusCode}",
-      );
-    } on http.ClientException catch (e) {
-      print("❌ Network Error (ClientException): $e");
-      throw Exception("Network error while fetching items: $e");
-    } on SocketException catch (e) {
-      print("❌ Network Error (SocketException): $e");
-      throw Exception("No internet connection while fetching items: $e");
-    } on Exception catch (e) {
-      print("❌ General Error: $e");
+    } on SocketException {
+      throw Exception("No internet connection");
+    } catch (e) {
+      debugPrint("❌ fetchItems error: $e");
       rethrow;
     }
   }
 
-  // In your api_service.dart file
   static Future<Map<String, dynamic>?> postSaleData(
     Map<String, dynamic> data,
-    String authToken,
   ) async {
     final url = Uri.parse('$baseUrl/sale/store');
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $authToken',
-    };
 
     try {
-      print("🚀 **Sending Data (JSON Payload):** ${json.encode(data)}");
-      print("🚀 Data being sent to /sale/store: ${json.encode(data)}");
-      print(
-        "🔑 Authorization Token (Bearer part only): ${authToken.substring(0, 5)}...",
-      );
       final response = await http.post(
         url,
-        headers: headers,
-        body: json.encode(data),
+        headers: await authHeaders(contentType: 'application/json'),
+        body: jsonEncode(data),
       );
 
+      debugPrint("📤 Sale Store Status: ${response.statusCode}");
+      debugPrint("📤 Sale Store Body: ${response.body}");
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("✅ Sale saved successfully! Response: ${response.body}");
-        // Decode and return the response body, which should contain the SaleId
-        return json.decode(response.body);
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        // 🔐 Token expired / invalid
+        await AuthStorage.logout();
+        return null;
       } else {
-        print("❌ Failed to save sale. Status: ${response.statusCode}");
-        print("Response Body: ${response.body}");
         return null;
       }
     } catch (e) {
-      print("❌ Error during API call: $e");
+      debugPrint("❌ postSaleData error: $e");
       return null;
     }
   }
 
-  //manage page ki sale list
-  // Remove the try-catch block
-  static Future<List<dynamic>> fetchSales(
-    String authToken,
-    Map<String, dynamic> data,
-  ) async {
+  static Future<List<dynamic>> fetchSales(Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/sale/list');
-    final headers = _headers(token: authToken, contentType: 'application/json');
+
+    final headers = await authHeaders(contentType: 'application/json');
 
     final response = await http.post(
       url,
@@ -602,25 +575,18 @@ class ApiService {
       body: json.encode(data),
     );
 
-    print("API Response - Status Code: ${response.statusCode}");
-    print("API Response - Body: ${response.body}");
-
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final List<dynamic> sales = json.decode(response.body);
-      return sales;
+      return json.decode(response.body) as List<dynamic>;
     } else {
-      // Handle the error based on the API response
       final errorResponse = json.decode(response.body);
       throw Exception(errorResponse['message'] ?? 'Failed to load sales data');
     }
   }
 
-  static Future<List<dynamic>> fetchPurchases(
-    String authToken,
-    Map<String, dynamic> data,
-  ) async {
+  static Future<List<dynamic>> fetchPurchases(Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/purchase/list');
-    final headers = _headers(token: authToken, contentType: 'application/json');
+
+    final headers = await authHeaders(contentType: 'application/json');
 
     final response = await http.post(
       url,
@@ -628,26 +594,27 @@ class ApiService {
       body: json.encode(data),
     );
 
-    print("API Response - Status Code: ${response.statusCode}");
-    print("API Response - Body: ${response.body}");
+    debugPrint("API Response - Status Code: ${response.statusCode}");
+    debugPrint("API Response - Body: ${response.body}");
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final List<dynamic> sales = json.decode(response.body);
-      return sales;
+      return json.decode(response.body) as List<dynamic>;
     } else {
-      // Handle the error based on the API response
       final errorResponse = json.decode(response.body);
-      throw Exception(errorResponse['message'] ?? 'Failed to load sales data');
+      throw Exception(
+        errorResponse['message'] ?? 'Failed to load purchase data',
+      );
     }
   }
 
   // Unit Section
-  static Future<List<Map<String, dynamic>>> getUnit(String token) async {
+  static Future<List<Map<String, dynamic>>> getUnit() async {
     final url = Uri.parse("$baseUrl/get_unit");
     try {
       final res = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({}),
       );
       if (res.statusCode == 200) {
@@ -668,11 +635,12 @@ class ApiService {
   }
 
   // Fetch all items
-  static Future<List<dynamic>> fetchItemList(String token) async {
+  static Future<List<dynamic>> fetchItemList() async {
     final url = Uri.parse("$baseUrl/item/list");
     final response = await http.post(
       url,
-      headers: _headers(token: token, contentType: 'application/json'),
+      headers: await authHeaders(contentType: 'application/json'),
+
       body: json.encode({}),
     );
     if (response.statusCode == 200) {
@@ -688,13 +656,14 @@ class ApiService {
     }
   }
 
-  static Future<List<dynamic>> fetchClients(String token) async {
+  static Future<List<dynamic>> fetchClients() async {
     final url = Uri.parse("$baseUrl/get_client");
     print("🟡 Attempting to fetch clients from URL: $url");
     try {
       final res = await http.post(
         url,
-        headers: _headers(token: token, contentType: 'application/json'),
+        headers: await authHeaders(contentType: 'application/json'),
+
         body: json.encode({}),
       );
 
@@ -738,234 +707,279 @@ class ApiService {
   static Future<bool> updateItemWithImage({
     required Map<String, String> itemData,
     File? imageFile,
-    required String token,
   }) async {
-    // 💡 NOTE: The URL in the Multi-part request must be correct.
-    var request = http.MultipartRequest(
+    final request = http.MultipartRequest(
       'POST',
-      Uri.parse(
-        'https://gst.billcare.in/api/item/update',
-      ), // <--- Your Update URL
+      Uri.parse('https://gst.billcare.in/api/item/update'),
     );
 
     try {
-      // 1. Add Authorization Header
-      request.headers['Authorization'] = 'Bearer $token';
+      // ✅ Auth headers from SecureStorage
+      final headers = await authHeaders();
+      request.headers.addAll(headers);
 
-      // 2. Add all text fields (Item Data)
+      // ✅ Add text fields
       request.fields.addAll(itemData);
 
+      // ✅ Add image if exists
       if (imageFile != null) {
-        print("🖼️ Attaching NEW image: ${imageFile.path}");
-
+        debugPrint("🖼️ Attaching image: ${imageFile.path}");
         request.files.add(
           await http.MultipartFile.fromPath('Image', imageFile.path),
         );
       }
 
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
-      print("✅ API Update Status: ${response.statusCode}");
-      print("✅ API Update Response Body: ${response.body}");
+      debugPrint("✅ Update Item Status: ${response.statusCode}");
+      debugPrint("✅ Update Item Body: ${response.body}");
 
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print("❌ Error updating item with image: $e");
+      debugPrint("❌ updateItemWithImage error: $e");
       return false;
     }
   }
 
   static Future<bool> storeData(
     Map<String, dynamic> userInput,
-
     File? imageFile,
-    String token,
   ) async {
     final Map<String, String> itemData = userInput.map(
       (key, value) => MapEntry(key, value.toString()),
     );
 
-    var request = http.MultipartRequest(
+    final request = http.MultipartRequest(
       'POST',
       Uri.parse('$baseUrl/item/store'),
     );
 
     try {
-      request.headers['Authorization'] = 'Bearer $token';
+      // ✅ Auth headers from SecureStorage
+      final headers = await authHeaders();
+      request.headers.addAll(headers);
 
+      // ✅ Add form fields
       request.fields.addAll(itemData);
 
-      // 5. Add the Image File (if available)
+      // ✅ Add image if exists
       if (imageFile != null) {
-        print("🖼️ Attaching image: ${imageFile.path}");
-
-        // CRITICAL: 'Image' is the field name your backend must be expecting for the file.
+        debugPrint("🖼️ Attaching image: ${imageFile.path}");
         request.files.add(
           await http.MultipartFile.fromPath('Image', imageFile.path),
         );
       }
 
-      // 6. Send the request
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
-      // Debugging logs
-      print("✅ API Response Status: ${response.statusCode}");
-      print("✅ API Response Body: ${response.body}");
+      debugPrint("✅ Store Item Status: ${response.statusCode}");
+      debugPrint("✅ Store Item Body: ${response.body}");
 
-      // 7. Check the status code
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      print("❌ Error storing data with image: $e");
+      debugPrint("❌ storeData error: $e");
       return false;
     }
   }
 
-  static Future<bool> updateSale(
-    String authToken,
-    Map<String, dynamic> saleData,
-  ) async {
+  static Future<bool> updateSale(Map<String, dynamic> saleData) async {
     final url = Uri.parse("$baseUrl/sale/update");
 
-    var request = http.MultipartRequest('POST', url);
-
-    // Add Authorization header
-    request.headers['Authorization'] = 'Bearer $authToken';
-
-    // Loop through the data map to build the form fields
-    saleData.forEach((key, value) {
-      if (value is List) {
-        for (int i = 0; i < value.length; i++) {
-          request.fields['$key[$i]'] = value[i].toString();
-        }
-      } else {
-        // If it's a simple value, add it directly.
-        request.fields[key] = value.toString();
-      }
-    });
+    final request = http.MultipartRequest('POST', url);
 
     try {
-      print("Sending Update Sale Request...");
-      // You can print the fields to debug and see how they are formatted
-      print("Request Fields: ${request.fields}");
+      // ✅ Auth headers from SecureStorage
+      final headers = await authHeaders();
+      request.headers.addAll(headers);
+
+      // ✅ Add form fields
+      saleData.forEach((key, value) {
+        if (value is List) {
+          for (int i = 0; i < value.length; i++) {
+            request.fields['$key[$i]'] = value[i].toString();
+          }
+        } else {
+          request.fields[key] = value.toString();
+        }
+      });
+
+      debugPrint("🟡 Update Sale Fields: ${request.fields}");
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('Update Sale API Response Status: ${response.statusCode}');
-      print('Update Sale API Response Body: ${response.body}');
+      debugPrint("🟢 Update Sale Status: ${response.statusCode}");
+      debugPrint("🟢 Update Sale Body: ${response.body}");
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
-      } else {
-        print('Failed to update sale.');
-        return false;
       }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.logout(); // 🔐 token expired
+      }
+
+      return false;
     } catch (e) {
-      print('Error during updateSale API call: $e');
+      debugPrint("❌ updateSale error: $e");
       return false;
     }
   }
-  //purchase api code here..
 
-  static Future<bool> updatePurchase(
-    String authToken,
-    Map<String, dynamic> purchaseData,
-  ) async {
+  static Future<bool> updatePurchase(Map<String, dynamic> purchaseData) async {
     final url = Uri.parse("$baseUrl/purchase/update");
 
-    var request = http.MultipartRequest('POST', url);
-
-    // Add Authorization header
-    request.headers['Authorization'] = 'Bearer $authToken';
-
-    // Loop through the data map to build the form fields
-    purchaseData.forEach((key, value) {
-      if (value is List) {
-        for (int i = 0; i < value.length; i++) {
-          request.fields['$key[$i]'] = value[i].toString();
-        }
-      } else {
-        // If it's a simple value, add it directly.
-        request.fields[key] = value.toString();
-      }
-    });
+    final request = http.MultipartRequest('POST', url);
 
     try {
-      print("Sending Update Sale Request...");
-      // You can print the fields to debug and see how they are formatted
-      print("Request Fields: ${request.fields}");
+      // ✅ Auth headers from SecureStorage
+      final headers = await authHeaders();
+      request.headers.addAll(headers);
+
+      // ✅ Add form fields
+      purchaseData.forEach((key, value) {
+        if (value is List) {
+          for (int i = 0; i < value.length; i++) {
+            request.fields['$key[$i]'] = value[i].toString();
+          }
+        } else {
+          request.fields[key] = value.toString();
+        }
+      });
+
+      debugPrint("🟡 Update Purchase Fields: ${request.fields}");
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('Update Purchase API Response Status: ${response.statusCode}');
-      print('Update Purchase API Response Body: ${response.body}');
+      debugPrint("🟢 Update Purchase Status: ${response.statusCode}");
+      debugPrint("🟢 Update Purchase Body: ${response.body}");
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
-      } else {
-        print('Failed to update purchase.');
-        return false;
       }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.logout(); // 🔐 token expired
+      }
+
+      return false;
     } catch (e) {
-      print('Error during updatePurchase API call: $e');
+      debugPrint("❌ updatePurchase error: $e");
       return false;
     }
   }
+static Future<Map<String, dynamic>?> fetchItemForEdit(int itemId) async {
+  final url = Uri.parse("$baseUrl/item/edit");
 
-  // static Future<Map<String, dynamic>?> postPurchaseData(
-  //   Map<String, dynamic> data,
-  //   String authToken,
-  // ) async {
-  //   final url = Uri.parse('$baseUrl/purchase/store');
-  //   final headers = {'Authorization': 'Bearer $authToken'};
+  try {
+    final response = await http.post(
+      url,
+      headers: await authHeaders(contentType: 'application/json'),
+      body: jsonEncode({"ItemId": itemId}),
+    );
 
-  //   try {
-  //     print("🟢 DEBUG: Purchase Request Body => $data");
+    debugPrint("📡 Item Edit Status: ${response.statusCode}");
+    debugPrint("📡 Item Edit Body: ${response.body}");
 
-  //     final response = await http.post(
-  //       url,
-  //       headers: headers,
-  //       body: data.map((key, value) {
-  //         if (value is List) {
-  //           return MapEntry(key, value.map((v) => v.toString()).toList());
-  //         } else {
-  //           return MapEntry(key, value.toString());
-  //         }
-  //       }),
-  //     );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
 
-  //     print(
-  //       "🟢 DEBUG: Purchase Response [${response.statusCode}] => ${response.body}",
-  //     );
+    if (response.statusCode == 401) {
+      // 🔐 token expired
+      await AuthStorage.logout();
+      return null;
+    }
 
-  //     if (response.statusCode == 200 || response.statusCode == 201) {
-  //       return jsonDecode(response.body);
-  //     } else {
-  //       print("🔴 ERROR: Purchase failed with status ${response.statusCode}");
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     print("🔴 EXCEPTION in postPurchaseData: $e");
-  //     return null;
-  //   }
-  // }
+    return null;
+  } catch (e) {
+    debugPrint("❌ fetchItemForEdit error: $e");
+    return null;
+  }
+}
+static Future<bool> storeIncomeExpenseItem(
+  Map<String, dynamic> data,
+) async {
+  final url = Uri.parse("$baseUrl/inc_exp/item/store");
+
+  try {
+    final response = await http.post(
+      url,
+      headers: await authHeaders(
+        contentType: 'application/x-www-form-urlencoded',
+      ),
+      body: data.map((k, v) => MapEntry(k, v.toString())),
+    );
+
+    debugPrint("🟢 Inc/Exp Store Status: ${response.statusCode}");
+    debugPrint("🟢 Inc/Exp Store Body: ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return true;
+    }
+
+    if (response.statusCode == 401) {
+      await AuthStorage.logout();
+    }
+
+    return false;
+  } catch (e) {
+    debugPrint("❌ storeIncomeExpenseItem error: $e");
+    return false;
+  }
+}
+static Future<bool> updateIncomeExpenseItem(
+  Map<String, dynamic> data,
+) async {
+  final url = Uri.parse("$baseUrl/inc_exp/item/update");
+
+  try {
+    final response = await http.post(
+      url,
+      headers: await authHeaders(
+        contentType: 'application/x-www-form-urlencoded',
+      ),
+      body: data.map((k, v) => MapEntry(k, v.toString())),
+    );
+
+    debugPrint("🟢 Inc/Exp Update Status: ${response.statusCode}");
+    debugPrint("🟢 Inc/Exp Update Body: ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return true;
+    }
+
+    if (response.statusCode == 401) {
+      await AuthStorage.logout();
+    }
+
+    return false;
+  } catch (e) {
+    debugPrint("❌ updateIncomeExpenseItem error: $e");
+    return false;
+  }
+}
 
   static Future<Map<String, dynamic>?> postPurchaseData(
     Map<String, dynamic> data,
-    String authToken,
   ) async {
     final url = Uri.parse('$baseUrl/purchase/store');
+
     try {
-      var request = http.MultipartRequest('POST', url);
-      request.headers['Authorization'] = 'Bearer $authToken';
+      final request = http.MultipartRequest('POST', url);
+
+      // ✅ Auth headers from SecureStorage (SAFE)
+      final headers = await authHeaders();
+      request.headers.addAll(headers);
+
       request.headers['Accept'] = 'application/json';
 
-      print("🟢 DEBUG: Preparing Purchase FormData...");
+      debugPrint("🟢 Preparing Purchase FormData...");
 
-      // ✅ Add simple fields
+      // ✅ Simple fields
       final nonListKeys = [
         'Date',
         'ClientId',
@@ -975,6 +989,7 @@ class ApiService {
         'PaymentMode',
         'Remark',
       ];
+
       for (final key in nonListKeys) {
         final value = data[key];
         if (value != null) {
@@ -982,7 +997,7 @@ class ApiService {
         }
       }
 
-      // ✅ Helper for array fields (Laravel expects "key[0]", "key[1]", etc.)
+      // ✅ Array fields (Laravel format: key[0], key[1])
       void addArrayField(String key, List<dynamic>? list) {
         if (list == null) return;
         for (int i = 0; i < list.length; i++) {
@@ -997,86 +1012,102 @@ class ApiService {
       addArrayField('GSTAmt', data['GSTAmt']);
       addArrayField('TotalAmt', data['TotalAmt']);
 
-      print("🧾 Final FormData to API:");
-      request.fields.forEach((key, value) => print("$key => $value"));
+      debugPrint("🧾 Purchase FormData:");
+      request.fields.forEach((k, v) => debugPrint("$k => $v"));
 
       // ✅ Send request
       final response = await request.send();
       final resBody = await response.stream.bytesToString();
 
-      print("🟢 DEBUG: Purchase Response [${response.statusCode}] => $resBody");
+      debugPrint("🟢 Purchase Response [${response.statusCode}] => $resBody");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return jsonDecode(resBody);
+        return jsonDecode(resBody) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        // 🔐 Token expired → logout
+        await AuthStorage.logout();
+        return null;
       } else {
-        print("🔴 ERROR: Purchase failed with status ${response.statusCode}");
+        debugPrint("🔴 Purchase failed");
         return null;
       }
     } catch (e) {
-      print("🔴 EXCEPTION in postPurchaseData: $e");
+      debugPrint("❌ postPurchaseData error: $e");
       return null;
     }
   }
 
-  static Future<Map<String, dynamic>> fetchPrintPurchaseDetails(
-    String authToken,
+  static Future<Map<String, dynamic>?> fetchPrintPurchaseDetails(
     int purchaseId,
   ) async {
     final url = Uri.parse('$baseUrl/purchase/print');
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $authToken',
-    };
-    final body = json.encode({'PurchaseId': purchaseId});
 
-    final response = await http.post(url, headers: headers, body: body);
-
-    if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      return responseBody;
-    } else {
-      throw Exception(
-        'Failed to fetch Purchase details. Status code: ${response.statusCode}',
+    try {
+      final response = await http.post(
+        url,
+        headers: await authHeaders(contentType: 'application/json'),
+        body: json.encode({'PurchaseId': purchaseId}),
       );
+
+      debugPrint("🧾 Print Purchase Status: ${response.statusCode}");
+      debugPrint("🧾 Print Purchase Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        // 🔐 Token expired / invalid
+        await AuthStorage.logout();
+        return null;
+      } else {
+        debugPrint("❌ Failed to fetch purchase print data");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("❌ fetchPrintPurchaseDetails error: $e");
+      return null;
     }
   }
 
   //printing
-  static Future<Map<String, dynamic>> fetchPrintSaleDetails(
-    String authToken,
-    int saleId,
-  ) async {
+  static Future<Map<String, dynamic>?> fetchPrintSaleDetails(int saleId) async {
     final url = Uri.parse('$baseUrl/sale/print');
-    final headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $authToken',
-    };
-    final body = json.encode({'SaleId': saleId});
 
-    final response = await http.post(url, headers: headers, body: body);
-
-    if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      return responseBody;
-    } else {
-      throw Exception(
-        'Failed to fetch sale details. Status code: ${response.statusCode}',
+    try {
+      final response = await http.post(
+        url,
+        headers: await authHeaders(contentType: 'application/json'),
+        body: json.encode({'SaleId': saleId}),
       );
+
+      debugPrint("🧾 Print Sale Status: ${response.statusCode}");
+      debugPrint("🧾 Print Sale Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        // 🔐 Token expired → force logout
+        await AuthStorage.logout();
+        return null;
+      } else {
+        debugPrint("❌ Failed to fetch sale print data");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("❌ fetchPrintSaleDetails error: $e");
+      return null;
     }
   }
 
   //
-  static Future<List<dynamic>> getNames(String token, String type) async {
+  static Future<List<dynamic>> getNames(String type) async {
     final url = Uri.parse("$baseUrl/get_name");
     print("Fetching client name list for type: $type...");
     try {
       final res = await http.post(
         url,
-        headers: {
-          'Content-Type':
-              'application/x-www-form-urlencoded', // ✅ Use URL-encoded type
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
         body: {'Type': type}, // ✅ Pass data as a Map
       );
       print("Client Name List API Status: ${res.statusCode}");
@@ -1099,82 +1130,73 @@ class ApiService {
 
   //print
   static Future<Map<String, dynamic>?> getReceiptData(
-    String token,
     String type,
     int receiptId,
   ) async {
     final url = Uri.parse("$baseUrl/receipt/print");
+
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
         body: {'ReceiptId': receiptId.toString(), 'type': type},
       );
 
+      debugPrint("📥 Receipt API Status: ${response.statusCode}");
+      debugPrint("📥 Receipt API Body: ${response.body}");
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        debugPrint('Receipt data fetched successfully.');
-        return data;
+        return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
-        debugPrint(
-          'Failed to get receipt data. Status: ${response.statusCode}',
-        );
+        debugPrint("❌ Receipt API failed");
         return null;
       }
     } catch (e) {
-      debugPrint('Error during getReceiptData API call: $e');
+      debugPrint("❌ getReceiptData error: $e");
       return null;
     }
   }
 
-  //print
   static Future<Map<String, dynamic>?> getPaymentData(
-    String token,
     String type,
     int paymentId,
   ) async {
     final url = Uri.parse("$baseUrl/payment/print");
+
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
         body: {'PaymentId': paymentId.toString(), 'type': type},
       );
 
+      debugPrint("📥 Payment API Status: ${response.statusCode}");
+      debugPrint("📥 Payment API Body: ${response.body}");
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-        debugPrint('Payment data fetched successfully.');
-        return data;
-      } else {
-        debugPrint(
-          'Failed to get payment data. Status: ${response.statusCode}',
-        );
-        return null;
+        return jsonDecode(response.body) as Map<String, dynamic>;
       }
+      return null;
     } catch (e) {
-      debugPrint('Error during getPaymentData API call: $e');
+      debugPrint("❌ getPaymentData error: $e");
       return null;
     }
   }
 
   //get balance
-  static Future<double> getBalance(String token, String type, int id) async {
+  static Future<double> getBalance(String type, int id) async {
     final url = Uri.parse("$baseUrl/get_balance");
 
     try {
       final response = await http.post(
         url,
-        headers: {
-          // Change Content-Type to form-urlencoded
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
         // ✅ Use a map and URI encode the body instead of jsonEncode
         body: {'Type': type, 'id': id.toString()},
       );
@@ -1194,19 +1216,12 @@ class ApiService {
     }
   }
 
-  static Future<dynamic> getReceiptForEdit(
-    String token,
-    int receiptId,
-    String type,
-  ) async {
+  static Future<dynamic> getReceiptForEdit(int receiptId, String type) async {
     final url = Uri.parse('$baseUrl/receipt/edit');
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(contentType: 'application/json'),
         body: jsonEncode({'ReceiptId': receiptId, 'type': type}),
       );
 
@@ -1234,19 +1249,14 @@ class ApiService {
     }
   }
 
-  static Future<bool> storeReceipt(
-    String token,
-    Map<String, dynamic> data,
-  ) async {
+  static Future<bool> storeReceipt(Map<String, dynamic> data) async {
     final url = Uri.parse("$baseUrl/receipt/store");
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type':
-              'application/x-www-form-urlencoded', // ✅ Use URL-encoded type
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
         // ✅ Convert all values to String for form data
         body: data.map((key, value) => MapEntry(key, value.toString())),
       );
@@ -1261,18 +1271,14 @@ class ApiService {
     }
   }
 
-  static Future<bool> updateReceipt(
-    String token,
-    Map<String, dynamic> data,
-  ) async {
+  static Future<bool> updateReceipt(Map<String, dynamic> data) async {
     final url = Uri.parse('$baseUrl/receipt/update');
     try {
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Bearer $token',
-        },
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
         // Convert the map to a URL-encoded string
         body: data.entries
             .map(
@@ -1297,7 +1303,6 @@ class ApiService {
   }
 
   static Future<String?> generateAndSavePdf({
-    required String authToken,
     required int saleId,
     required String fileName,
   }) async {
@@ -1306,32 +1311,28 @@ class ApiService {
     try {
       final response = await http.get(
         url,
-        headers: {
-          'Authorization': 'Bearer $authToken',
-          // Assuming your API returns application/pdf
-        },
+        headers: await authHeaders(), // ✅ SecureStorage se token
       );
 
-      if (response.statusCode == 200) {
-        // 1. Get the device's temporary directory for file storage
-        final directory = await getTemporaryDirectory();
+      debugPrint("📄 PDF Status: ${response.statusCode}");
 
-        // 2. Create the complete file path
+      if (response.statusCode == 200) {
+        final directory = await getTemporaryDirectory();
         final file = File('${directory.path}/$fileName');
 
-        // 3. Write the raw API response body (the PDF bytes) to the file
         await file.writeAsBytes(response.bodyBytes);
 
-        // 4. Return the local path
         return file.path;
+      } else if (response.statusCode == 401) {
+        // 🔐 Token expired → logout
+        await AuthStorage.logout();
+        return null;
       } else {
-        // Handle API errors (e.g., 404 Not Found, 500 Server Error)
-        print('Failed to generate PDF. Status: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        debugPrint("❌ PDF API failed");
         return null;
       }
     } catch (e) {
-      print('Network or File writing error: $e');
+      debugPrint("❌ generateAndSavePdf error: $e");
       return null;
     }
   }

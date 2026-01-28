@@ -3,8 +3,8 @@ import 'package:billcare/purchase/editpurchaseitem.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:billcare/api/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EditPurchasePage extends StatefulWidget {
   final int purchaseId;
@@ -20,12 +20,7 @@ class _EditPurchasePageState extends State<EditPurchasePage> {
   late String _selectedDate;
   late final TextEditingController _dateController;
   final _customerController = TextEditingController();
-
-  // ✅ CLEANUP 1: Removed unused _priceController and _receivedController
   final _remarkController = TextEditingController();
-
-  // New state variables to replace unused TextControllers for data holding
-  // ignore: unused_field
   double _grandTotalAmt = 0.0;
   double _PaymentAmt = 0.0;
 
@@ -39,7 +34,6 @@ class _EditPurchasePageState extends State<EditPurchasePage> {
   List<dynamic> _filteredClients = [];
   bool _showClientList = false;
   bool _isReceived = false;
-  String? _authToken;
   bool _isUpdating = false;
   static const _sharedPrefsKey = 'current_purchase_items';
 
@@ -62,51 +56,42 @@ class _EditPurchasePageState extends State<EditPurchasePage> {
     super.dispose();
   }
 
-  Future<void> _initializePage() async {
-    // 1. Load Auth Token and Clients
-    await _loadAuthTokenAndClients();
+Future<void> _initializePage() async {
+  await _fetchClients(); // 🔥 MISSING CALL
 
-    // 2. Initialize date controller with a placeholder/current date
-    _selectedDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
-    _dateController.text = _selectedDate;
+  _selectedDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
+  _dateController.text = _selectedDate;
 
-    await _fetchPurchaseDataForEdit(widget.purchaseId);
-  }
+  await _fetchPurchaseDataForEdit(widget.purchaseId);
+}
+
 
   // --- API and Data Handling ---
 
-  Future<void> _fetchPurchaseDataForEdit(int purchaseId) async {
-    try {
-      // Clear temporary items before loading new ones
-      await _clearBilledItemsFromPrefs();
+ Future<void> _fetchPurchaseDataForEdit(int purchaseId) async {
+  try {
+    await _clearBilledItemsFromPrefs();
 
-      final purchaseData = await ApiService.fetchPurchaseForEdit(
-        _authToken!,
-        purchaseId,
+    final purchaseData =
+        await ApiService.fetchPurchaseForEdit(purchaseId);
+
+    print("🟢 DEBUG: Raw purchase data => $purchaseData");
+
+    if (mounted && purchaseData != null) {
+      _populateFormData(purchaseData);
+    } else if (mounted) {
+      _showSnackbar(
+        "Failed to load purchase data for ID: $purchaseId",
+        Colors.red,
       );
-      print("🟢 DEBUG: Raw purchase data from backend => $purchaseData");
-      if (mounted && purchaseData != null) {
-        _populateFormData(purchaseData);
-      } else if (mounted) {
-        _showSnackbar(
-          "Failed to load purchase data for ID: $purchaseId",
-          Colors.red,
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        String errorMessage = "Error loading purchase data: $e";
-        if (e.toString().contains(
-          'type \'String\' is not a subtype of type \'num\'',
-        )) {
-          errorMessage =
-              "Error loading data. Received text instead of a number from the server. $e";
-        }
-        _showSnackbar(errorMessage, Colors.red);
-      }
+      Navigator.pop(context);
+    }
+  } catch (e) {
+    if (mounted) {
+      _showSnackbar("Error loading purchase: $e", Colors.red);
     }
   }
+}
 
   void _populateFormData(Map<String, dynamic> data) {
     print("🟡 DEBUG: Populating form with data => ${jsonEncode(data)}");
@@ -277,8 +262,7 @@ class _EditPurchasePageState extends State<EditPurchasePage> {
       _isUpdating = true;
     });
     // 3. API Call (Update Purchase)
-    try {
-      final success = await ApiService.updatePurchase(_authToken!, requestBody);
+    try {final success = await ApiService.updatePurchase(requestBody);
 
       if (success) {
         await _clearBilledItemsFromPrefs();
@@ -307,27 +291,14 @@ class _EditPurchasePageState extends State<EditPurchasePage> {
     }
   }
 
-  Future<void> _loadAuthTokenAndClients() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('authToken');
-
-    if (_authToken != null) {
-      await _fetchClients();
-    } else {
-      if (mounted) {
-        setState(() => _isLoadingClients = false);
-        _showSnackbar(
-          "Authentication failed. Please log in again.",
-          Colors.red,
-        );
-      }
-    }
-  }
+ 
+  
 
   Future<void> _fetchClients() async {
     if (mounted) setState(() => _isLoadingClients = true);
     try {
-      final clients = await ApiService.fetchClients(_authToken!);
+    final clients = await ApiService.fetchClients();
+
       if (mounted) {
         setState(() {
           _allClients = clients;
@@ -377,7 +348,7 @@ class _EditPurchasePageState extends State<EditPurchasePage> {
         }
       });
     } else {
-      // MODIFICATION 1: Show the list on focus if the text is empty, or let _filterClients handle it if text is present
+     
       if (_customerController.text.isEmpty) {
         setState(() {
           _filteredClients = _allClients;

@@ -52,7 +52,7 @@ class _LoginPageState extends State<LoginPage> {
 
         final fcmToken = await FirebaseMessaging.instance.getToken();
         if (fcmToken != null && fcmToken.isNotEmpty) {
-          await ApiService.saveToken(fcmToken, token);
+          await ApiService.saveToken(fcmToken);
         }
 
         if (!mounted) return;

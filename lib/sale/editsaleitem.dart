@@ -122,7 +122,7 @@ class _EditSaleItemsPageState extends State<EditSaleItemsPage> {
         }
         return;
       }
-      final itemData = await ApiService.fetchItems(token);
+      final itemData = await ApiService.fetchItems();
       if (mounted) {
         setState(() {
           savedItems = itemData.map((json) => Item.fromJson(json)).toList();

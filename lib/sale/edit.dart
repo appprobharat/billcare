@@ -80,7 +80,7 @@ class _EditSalePageState extends State<EditSalePage> {
       // Clear temporary items before loading new ones
       await _clearBilledItemsFromPrefs();
 
-      final saleData = await ApiService.fetchSaleForEdit(_authToken!, saleId);
+      final saleData = await ApiService.fetchSaleForEdit( saleId);
 
       if (mounted && saleData != null) {
         _populateFormData(saleData);
@@ -264,7 +264,7 @@ class _EditSalePageState extends State<EditSalePage> {
     });
     // 3. API Call (Update Sale)
     try {
-      final success = await ApiService.updateSale(_authToken!, requestBody);
+      final success = await ApiService.updateSale( requestBody);
 
       if (success) {
         await _clearBilledItemsFromPrefs();
@@ -313,7 +313,7 @@ class _EditSalePageState extends State<EditSalePage> {
   Future<void> _fetchClients() async {
     if (mounted) setState(() => _isLoadingClients = true);
     try {
-      final clients = await ApiService.fetchClients(_authToken!);
+      final clients = await ApiService.fetchClients();
       if (mounted) {
         setState(() {
           _allClients = clients;

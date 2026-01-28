@@ -48,7 +48,7 @@ class _ManageClientPageState extends State<ManageClientPage> {
       if (token == null) {
         throw Exception("Auth token not found.");
       }
-      final List<dynamic> clientData = await ApiService.getClientList(token);
+      final List<dynamic> clientData = await ApiService.getClientList();
       final List<ClientModel> clients = clientData
           .map((json) => ClientModel.fromJson(json))
           .toList();

@@ -5,7 +5,6 @@ import 'package:billcare/purchase/pdf_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:billcare/purchase/add.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ClientData {
@@ -56,16 +55,17 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
   List<dynamic> _filteredPurchasesList = [];
 
   bool _isLoading = false;
-  String? _authToken;
+
 
   // --- Lifecycle & Initialization ---
 
-  @override
-  void initState() {
-    super.initState();
-    _setDefaultDateRange();
-    _loadAuthTokenAndClients();
-  }
+@override
+void initState() {
+  super.initState();
+  _setDefaultDateRange();
+  _searchPurchases();
+}
+
 
   @override
   void dispose() {
@@ -86,33 +86,10 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
 
   // --- API & Data Handling ---
 
-  Future<void> _loadAuthTokenAndClients() async {
-    setState(() => _isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('authToken');
-
-    if (_authToken == null) {
-      if (mounted) {
-        _showSnackbar("Authentication token is missing.", Colors.red);
-      }
-      setState(() => _isLoading = false);
-      return;
-    }
-    try {
-      await _searchPurchases(shouldClearClientFilter: false);
-    } catch (e) {
-      if (mounted) _showSnackbar('Error fetching clients: $e', Colors.red);
-      await _searchPurchases(shouldClearClientFilter: false);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
+ 
 
   Future<void> _searchPurchases({bool shouldClearClientFilter = true}) async {
-    if (_authToken == null || _authToken!.isEmpty) {
-      if (mounted) _showSnackbar("Authentication failed.", Colors.red);
-      return;
-    }
+  
 
     if (!mounted) return;
     setState(() {
@@ -133,10 +110,9 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
 
       final Map<String, dynamic> requestBody = {'from': fromDate, 'to': toDate};
 
-      final List<dynamic> fetchedPurchases = await ApiService.fetchPurchases(
-        _authToken!,
-        requestBody,
-      );
+     final fetchedPurchases =
+    await ApiService.fetchPurchases(requestBody);
+
       if (mounted) {
         fetchedPurchases.sort((a, b) {
           final refA = int.tryParse(a['RefNo'].toString()) ?? 0;
@@ -206,16 +182,13 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
   // --- PDF & Share Functions ---
 
   Future<void> _printDocument(Map<String, dynamic> purchase) async {
-    if (_authToken == null || _authToken!.isEmpty) {
-      _showSnackbar("Authentication failed.", Colors.red);
-      return;
-    }
+  
     try {
       if (mounted) setState(() => _isLoading = true);
       // Assuming PdfService handles API call and printing logic
       await PdfService.printDocument(
-        authToken: _authToken!,
-        purchase: purchase,
+       
+        purchase: purchase, authToken: '',
       );
       _showSnackbar('PDF sent to printer/download successfully!', Colors.green);
     } catch (e) {
@@ -227,10 +200,7 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
   }
 
   Future<void> _sharePurchasePdf(Map<String, dynamic> purchase) async {
-    if (_authToken == null || _authToken!.isEmpty) {
-      _showSnackbar("Authentication failed.", Colors.red);
-      return;
-    }
+  
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -245,14 +215,14 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
     if (mounted) setState(() => _isLoading = true);
 
     try {
-      final String filePath = await PdfService.generateAndSavePdf(
-        authToken: _authToken!,
-        purchase: purchase,
+      final String? filePath = await PdfService.generateAndSavePdf(
+ 
+        purchase: purchase, authToken: '',
       );
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      if (filePath.isNotEmpty) {
+      if (filePath!.isNotEmpty) {
         await Share.shareXFiles(
           [XFile(filePath)],
           subject: 'Invoice: ${purchase['RefNo'] ?? 'N/A'}',

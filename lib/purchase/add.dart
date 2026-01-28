@@ -41,7 +41,6 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
   bool _showClientList = false;
   bool _isPaid = false;
   double _balanceDue = 0.0;
-  String? _authToken;
   final bool _allowClientSelection = true;
   bool _isLoading = false;
   static const _sharedPrefsKey = 'current_purchase_items';
@@ -69,14 +68,16 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
   }
 
   // --- INITIALIZATION FIX ---
-  Future<void> _initializePage() async {
-    await _loadAuthTokenAndClients();
-    _selectedDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
-    _dateController.text = _selectedDate;
-    await _clearBilledItemsFromPrefs();
-    await _loadBilledItemsFromPrefs();
-    _calculateBalance();
-  }
+ Future<void> _initializePage() async {
+  _selectedDate = DateFormat('dd/MM/yyyy').format(DateTime.now());
+  _dateController.text = _selectedDate;
+
+  await _fetchClients();
+  await _clearBilledItemsFromPrefs();
+  await _loadBilledItemsFromPrefs();
+  _calculateBalance();
+}
+
 
   Future<void> _loadBilledItemsFromPrefs() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -261,10 +262,8 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
 
     // 4. API Call (Post New Purchase)
     try {
-      final newPurchaseData = await ApiService.postPurchaseData(
-        requestBody,
-        _authToken!,
-      );
+      final newPurchaseData = await ApiService.postPurchaseData(requestBody);
+
 
       print("DEBUG: API Response Received: $newPurchaseData");
 
@@ -304,41 +303,28 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
     print("--- Save FormData Finished ---");
   }
 
-  Future<void> _loadAuthTokenAndClients() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('authToken');
+ 
 
-    if (_authToken != null) {
-      await _fetchClients();
-    } else {
-      if (mounted) {
-        setState(() => _isLoadingClients = false);
-        _showSnackbar(
-          "Authentication failed. Please log in again.",
-          Colors.red,
-        );
-      }
+ Future<void> _fetchClients() async {
+  if (mounted) setState(() => _isLoadingClients = true);
+
+  try {
+    final clients = await ApiService.fetchClients(); // 🔥 no token
+    if (mounted) {
+      setState(() {
+        _allClients = clients;
+        _filteredClients = clients;
+        _isLoadingClients = false;
+      });
+    }
+  } catch (e) {
+    if (mounted) {
+      setState(() => _isLoadingClients = false);
+      _showSnackbar("Failed to load clients", Colors.red);
     }
   }
+}
 
-  Future<void> _fetchClients() async {
-    if (mounted) setState(() => _isLoadingClients = true);
-    try {
-      final clients = await ApiService.fetchClients(_authToken!);
-      if (mounted) {
-        setState(() {
-          _allClients = clients;
-          _filteredClients = _allClients;
-          _isLoadingClients = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingClients = false);
-        _showSnackbar("Failed to load clients. Please try again.", Colors.red);
-      }
-    }
-  }
 
   void _showSnackbar(String message, Color backgroundColor) {
     ScaffoldMessenger.of(context).showSnackBar(

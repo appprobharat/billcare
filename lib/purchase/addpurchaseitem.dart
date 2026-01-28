@@ -1,6 +1,6 @@
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 // --- Item Model (No Change) ---
 class Item {
@@ -114,44 +114,31 @@ class _AddPurchaseItemsPageState extends State<AddPurchaseItemsPage> {
   }
 
   // --- API and Total Calculation Methods (No Change in logic) ---
-  Future<void> _fetchItems() async {
+ Future<void> _fetchItems() async {
+  if (!mounted) return;
+
+  setState(() => _isLoadingItems = true);
+
+  try {
+    final itemData = await ApiService.fetchItems(); // 🔥 no token
+    if (!mounted) return;
+
+    setState(() {
+      savedItems = itemData.map((e) => Item.fromJson(e)).toList();
+      filteredItems = List.from(savedItems);
+    });
+  } catch (e) {
     if (mounted) {
-      setState(() {
-        _isLoadingItems = true;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load items')),
+      );
     }
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('authToken');
-      if (token == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Authentication token missing.')),
-          );
-        }
-        return;
-      }
-      final itemData = await ApiService.fetchItems(token);
-      if (mounted) {
-        setState(() {
-          savedItems = itemData.map((json) => Item.fromJson(json)).toList();
-          filteredItems = List.from(savedItems);
-        });
-      }
-    } on Exception catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load items: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingItems = false;
-        });
-      }
+  } finally {
+    if (mounted) {
+      setState(() => _isLoadingItems = false);
     }
   }
+}
 
   void _calculateTotals() {
     double tempTotalAmount = 0.0;

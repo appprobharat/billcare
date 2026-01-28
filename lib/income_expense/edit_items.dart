@@ -1,7 +1,6 @@
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class EditItemBottomSheet extends StatefulWidget {
   final String itemId;
@@ -43,89 +42,90 @@ class _EditItemBottomSheetState extends State<EditItemBottomSheet> {
     _loadUnits();
   }
 
-  Future<void> _loadUnits() async {
-    setState(() => isLoading = true);
+ Future<void> _loadUnits() async {
+  setState(() => isLoading = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
+  try {
+    final fetchedUnits = await ApiService.getUnit();
+    if (!mounted) return;
 
-    final fetchedUnits = await ApiService.getUnit(token);
-
-    setState(() {
-      units = fetchedUnits;
-
-      // Find matching unit id by name
-      final match = units.firstWhere(
-        (u) => u["Unit"] == widget.initialUnit,
-        orElse: () => {},
-      );
-
-      selectedUnitId = match.isNotEmpty ? match["id"].toString() : null;
-      isLoading = false;
-    });
-  }
-
-  Future<void> updateItem() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (selectedUnitId == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Please select a Unit")));
-      return;
-    }
-
-    final unitObj = units.firstWhere(
-      (u) => u["id"].toString() == selectedUnitId,
+    final match = fetchedUnits.firstWhere(
+      (u) => u["Unit"] == widget.initialUnit,
       orElse: () => {},
     );
 
-    if (unitObj.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Invalid Unit")));
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
-
-    setState(() => isLoading = true);
-
-    try {
-      final url = Uri.parse("https://gst.billcare.in/api/inc_exp/item/update");
-
-      final body = {
-        "ItemId": widget.itemId,
-        "Type": selectedType,
-        "ItemName": itemNameCtrl.text.trim(),
-        "Price": priceCtrl.text.trim(),
-        "Unit": unitObj["Unit"],
-      };
-
-      final response = await http.post(
-        url,
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-        },
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Item Updated Successfully")),
-        );
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Failed: ${response.body}")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      setState(() => isLoading = false);
-    }
+    setState(() {
+      units = fetchedUnits.cast<Map<String, dynamic>>();
+      selectedUnitId = match.isNotEmpty ? match["id"].toString() : null;
+    });
+  } catch (e) {
+    debugPrint("❌ load units error: $e");
+  } finally {
+    if (mounted) setState(() => isLoading = false);
   }
+}
+
+
+ Future<void> updateItem() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  if (selectedUnitId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select a Unit")),
+    );
+    return;
+  }
+
+  final unitObj = units.firstWhere(
+    (u) => u["id"].toString() == selectedUnitId,
+    orElse: () => {},
+  );
+
+  if (unitObj.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Invalid Unit selected")),
+    );
+    return;
+  }
+
+  final body = {
+    "ItemId": widget.itemId,
+    "Type": selectedType,
+    "ItemName": itemNameCtrl.text.trim(),
+    "Price": priceCtrl.text.trim(),
+    "Unit": unitObj["Unit"].toString(),
+  };
+
+  debugPrint("🚀 Edit BottomSheet Payload: $body");
+
+  setState(() => isLoading = true);
+
+  try {
+    final success = await ApiService.updateIncomeExpenseItem(body);
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Item Updated Successfully")),
+      );
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Failed to update item")),
+      );
+    }
+  } catch (e) {
+    debugPrint("❌ updateItem error: $e");
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("❌ Error while updating item")),
+    );
+  } finally {
+    if (mounted) setState(() => isLoading = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,5 +1,6 @@
 import 'dart:io'; 
 import 'dart:typed_data'; 
+import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -8,18 +9,14 @@ import 'package:billcare/api/api_service.dart'; // मौजूदा इम्�
 
 class PdfService {
 
-  static String numberToWords(double number) {
-    if (number == 0) {
-      return "Rupees Zero Only";
-    }
+ static String numberToWords(double number) {
+    if (number == 0) return "Rupees Zero Only";
 
     final int integerPart = number.toInt();
     final int decimalPart = ((number - integerPart) * 100).round();
 
-    String words = '';
-
     String convertHundreds(int n) {
-      final List<String> units = [
+      final units = [
         '',
         'One',
         'Two',
@@ -27,7 +24,6 @@ class PdfService {
         'Four',
         'Five',
         'Six',
-        'Seven',
         'Seven',
         'Eight',
         'Nine',
@@ -42,7 +38,7 @@ class PdfService {
         'Eighteen',
         'Nineteen',
       ];
-      final List<String> tens = [
+      final tens = [
         '',
         '',
         'Twenty',
@@ -64,40 +60,29 @@ class PdfService {
         result += '${tens[n ~/ 10]} ';
         n %= 10;
       }
-      if (n > 0) {
-        result += units[n];
-      }
+      if (n > 0) result += units[n];
       return result.trim();
     }
 
+    String words = '';
+
     if (integerPart >= 10000000) {
-      words += convertHundreds(integerPart ~/ 10000000) + ' Crore ';
-      int remaining = integerPart % 10000000;
-      if (remaining > 0) {
-        words += numberToWords(remaining.toDouble());
-      }
+      words += '${convertHundreds(integerPart ~/ 10000000)} Crore ';
+      words += convertHundreds(integerPart % 10000000);
     } else if (integerPart >= 100000) {
-      words += convertHundreds(integerPart ~/ 100000) + ' Lakh ';
-      int remaining = integerPart % 100000;
-      if (remaining > 0) {
-        words += numberToWords(remaining.toDouble());
-      }
+      words += '${convertHundreds(integerPart ~/ 100000)} Lakh ';
+      words += convertHundreds(integerPart % 100000);
     } else if (integerPart >= 1000) {
-      words += convertHundreds(integerPart ~/ 1000) + ' Thousand ';
-      int remaining = integerPart % 1000;
-      if (remaining > 0) {
-        words += numberToWords(remaining.toDouble());
-      }
+      words += '${convertHundreds(integerPart ~/ 1000)} Thousand ';
+      words += convertHundreds(integerPart % 1000);
     } else {
       words = convertHundreds(integerPart);
     }
 
-    String finalWords = "Rupees $words Only";
+    String finalWords = 'Rupees $words Only';
 
     if (decimalPart > 0) {
-      finalWords += ' and ';
-      finalWords +=
-          'Paise ${convertHundreds(decimalPart)} Only'; // Decimal part को भी words में कन्वर्ट करें
+      finalWords += ' and Paise ${convertHundreds(decimalPart)} Only';
     }
 
     return finalWords.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -130,65 +115,43 @@ class PdfService {
 
   // --- Main Functions ---
 
-  static Future<String> generateAndSavePdf({
-    required String authToken,
-    required Map<String, dynamic> purchase,
+    static Future<String?> generateAndSavePdf({
+    required Map<String, dynamic> purchase, required String authToken,
   }) async {
     try {
-      if (authToken.isEmpty) {
-        throw Exception("Authentication token is missing.");
-      }
+      final int purchaseId = purchase['id'] ?? 0;
+      if (purchaseId == 0) return null;
 
-      final int purchaseId = purchase['id'] as int? ?? 0;
-      if (purchaseId == 0) {
-        throw Exception("Invalid Purchase ID received.");
-      }
+      final data =
+          await ApiService.fetchPrintPurchaseDetails(purchaseId);
+      if (data == null || data.isEmpty) return null;
 
-      // 1. API से Purchase Details Fetch करें
-      final Map<String, dynamic> fullPurchaseData =
-          await ApiService.fetchPrintPurchaseDetails(authToken, purchaseId);
+      final pdfBytes = await _generatePdfDocument(data);
 
-      // 2. PDF Document Generate करें
-      final Uint8List pdfBytes = await _generatePdfDocument(fullPurchaseData);
+      final baseDir = await getApplicationDocumentsDirectory();
+      final refNo = data['RefNo'] ?? 'Invoice';
 
-      // 3. File Path निर्धारित करें
-      final baseDirectory = await getApplicationDocumentsDirectory();
-      final invoicePathSegment =
-          fullPurchaseData['RefNo'] ?? 'Invoice_Temp'; // जैसे SVD/24-25/43
+      final parts = refNo.split('/');
+      final rawName = parts.last;
+      final safeName =
+          rawName.endsWith('.pdf') ? rawName : '$rawName.pdf';
 
-      // Path को /data/user/0/.../app_flutter/Invoice_SVD/24-25/43.pdf में तोड़ना
-      // फ़ाइल का नाम और डायरेक्टरी पाथ अलग करें
-      final List<String> pathParts = invoicePathSegment.split('/');
-      final String fileName =
-          pathParts.last; // '43.pdf' या जो भी आख़िरी हिस्सा है
-      final String directoryPath = pathParts
-          .sublist(0, pathParts.length - 1)
-          .join('/'); // 'SVD/24-25'
+      final dirPath =
+          '${baseDir.path}/${parts.take(parts.length - 1).join('/')}';
+      final dir = Directory(dirPath);
+      if (!await dir.exists()) await dir.create(recursive: true);
 
-      // पूरी डायरेक्टरी पाथ बनाएं
-      final Directory finalDirectory = Directory(
-        '${baseDirectory.path}/$directoryPath',
-      );
+      final filePath = '${dir.path}/$safeName';
+      await File(filePath).writeAsBytes(pdfBytes);
 
-  
-      if (!await finalDirectory.exists()) {
-        await finalDirectory.create(recursive: true);
-        print("Created Directory: ${finalDirectory.path}");
-      }
-      final filePath =
-          '${finalDirectory.path}/$fileName.pdf'; 
-      final file = File(filePath);
-
-    
-      await file.writeAsBytes(pdfBytes);
-
-    
       return filePath;
     } catch (e) {
-      print("Error generating or saving PDF: $e");
-      return '';
+      if (kDebugMode) debugPrint('PDF save error: $e');
+      return null;
     }
   }
+
+
 
   static Future<void> printDocument({
     required String authToken,
@@ -203,11 +166,11 @@ class PdfService {
       throw Exception("Invalid Purchase ID received.");
     }
 
-    final Map<String, dynamic> fullPurchaseData =
-        await ApiService.fetchPrintPurchaseDetails(authToken, purchaseId);
+    final Map<String, dynamic>? fullPurchaseData =
+         await ApiService.fetchPrintPurchaseDetails(purchaseId);
 
     // PDF जनरेट करें
-    final Uint8List pdfBytes = await _generatePdfDocument(fullPurchaseData);
+    final Uint8List pdfBytes = await _generatePdfDocument(fullPurchaseData!);
 
     // Printing.layoutPdf का उपयोग करके प्रिंट करें
     await Printing.layoutPdf(

@@ -119,7 +119,7 @@ class _EditPurchaseItemsPageState extends State<EditPurchaseItemsPage> {
         }
         return;
       }
-      final itemData = await ApiService.fetchItems(token);
+      final itemData = await ApiService.fetchItems();
       print("🟩 Fetched items: $itemData");
       if (mounted) {
         setState(() {

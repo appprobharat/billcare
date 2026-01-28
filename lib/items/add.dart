@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 const Color kPrimaryColor = Color(0xFF1E3A8A);
 const double kCompactSpacing = 8.0;
@@ -280,129 +280,95 @@ class _AddItemPageState extends State<AddItemPage> {
     }
   }
 
-  void loadCategories() async {
-    setState(() => isCategoryLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString("authToken");
+ void loadCategories() async {
+  setState(() => isCategoryLoading = true);
 
-    if (token == null) {
-      setState(() => isCategoryLoading = false);
-      return;
-    }
+  try {
+    final categories = await ApiService.fetchCategoryList();
+    if (!mounted) return;
 
-    try {
-      final categories = await ApiService.fetchCategories(token);
-      setState(() {
-        categoryList = categories.map((e) => e).toList();
-      });
-    } catch (e) {
-      // ... error handling
-    } finally {
-      setState(() => isCategoryLoading = false);
-    }
+    setState(() {
+      categoryList = categories.cast<Map<String, dynamic>>();
+    });
+  } catch (e) {
+    debugPrint("❌ loadCategories error: $e");
+  } finally {
+    if (mounted) setState(() => isCategoryLoading = false);
   }
+}
 
-  void loadunits() async {
-    setState(() => isUnitLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString("authToken");
 
-    if (token == null) {
-      setState(() => isUnitLoading = false);
-      return;
-    }
+ void loadunits() async {
+  setState(() => isUnitLoading = true);
 
-    try {
-      final unit = await ApiService.getUnit(token);
-      setState(() {
-        unitLists = unit.map((e) => e).toList();
-        // डिफ़ॉल्ट चयन लॉजिक हटा दिया गया है।
-        // selectedUnit और unitCtrl.text अब null/empty रहेंगे।
-      });
-    } catch (e) {
-      // ... error handling
-    } finally {
-      setState(() => isUnitLoading = false);
-    }
+  try {
+    final unit = await ApiService.getUnit();
+    if (!mounted) return;
+
+    setState(() {
+      unitLists = unit.cast<Map<String, dynamic>>();
+    });
+  } catch (e) {
+    debugPrint("❌ loadunits error: $e");
+  } finally {
+    if (mounted) setState(() => isUnitLoading = false);
   }
+}
 
-  Future<void> saveItem() async {
-    if (!_formKey.currentState!.validate()) return;
-    _removeOverlay(); // Ensure any open dropdown is closed
+ Future<void> saveItem() async {
+  if (!_formKey.currentState!.validate()) return;
+  _removeOverlay();
 
-    setState(() => isSaving = true);
+  setState(() => isSaving = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString("authToken");
+  final itemData = {
+    "Type": selectedType ?? "Goods",
+    "Name": nameCtrl.text.trim(),
+    "CategoryId": selectedCategoryId ?? '0',
+    "SKUCode": skuCtrl.text.trim(),
+    "PartNo": partNoCtrl.text.trim(),
+    "DrgNo": dragNoCtrl.text.trim(),
+    "HSNCode": hsnCtrl.text.trim(),
+    "MRP": mrpCtrl.text.trim(),
+    "SalePrice": salesPriceCtrl.text.trim(),
+    "PurchasePrice": purchasePriceCtrl.text.trim(),
+    "Brand": brandCtrl.text.trim(),
+    "Unit": selectedUnit ?? '1',
+    "GST": selectedGST ?? '0',
+    "Stock": stockCtrl.text.trim(),
+    "Image": imagecontroller.text,
+  };
 
-    if (token == null) {
-      setState(() => isSaving = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("❌ Error: Please log in again (No Auth Token)."),
-          ),
-        );
-      }
-      return;
-    }
+  debugPrint("🚀 Add Item Payload: $itemData");
 
-    final itemData = {
-      "Type": selectedType ?? "Goods",
-      "Name": nameCtrl.text.trim(),
-      "CategoryId": selectedCategoryId ?? '0',
-      "SKUCode": skuCtrl.text.trim(),
-      "PartNo": partNoCtrl.text.trim(),
-      "DrgNo": dragNoCtrl.text.trim(),
-      "HSNCode": hsnCtrl.text.trim(),
-      "MRP": mrpCtrl.text.trim(),
-      "SalePrice": salesPriceCtrl.text.trim(),
-      "PurchasePrice": purchasePriceCtrl.text.trim(),
-      "Brand": brandCtrl.text.trim(),
-      "Unit": selectedUnit ?? '1', // Use the stored ID
-      "GST": selectedGST ?? '0',
-      "Stock": stockCtrl.text.trim(),
-      "Image": imagecontroller.text,
-    };
-    // 🚀 DEBUG STATEMENT 1: Print the entire data map
-    print("=======================================");
-    print("🚀 Data being sent to API:");
-    print(itemData);
-    print("=======================================");
+  try {
+    final success = await ApiService.storeData(
+      itemData,
+      itemImage,
+    );
 
-    // 🚀 DEBUG STATEMENT 2: Print specific fields to verify IDs
-    print("🔑 Selected IDs Check:");
-    print("   - CategoryId: ${itemData['CategoryId']}");
-    print("   - Unit: ${itemData['Unit']}");
-    print("   - GST: ${itemData['GST']}");
-    print("---------------------------------------");
-    try {
-      bool success = await ApiService.storeData(
-        itemData.cast<String, String>(),
-        itemImage,
-        token,
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Item stored successfully")),
       );
-
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ Item stored successfully")),
-        );
-        Navigator.pop(context, true);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ Failed to store item (API failed)")),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("❌ An error occurred during saving.")),
-        );
-      }
-    } finally {
-      setState(() => isSaving = false);
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Failed to store item")),
+      );
     }
+  } catch (e) {
+    debugPrint("❌ saveItem error: $e");
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("❌ Error while saving item")),
+    );
+  } finally {
+    if (mounted) setState(() => isSaving = false);
   }
+}
 
   @override
   void dispose() {

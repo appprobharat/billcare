@@ -271,7 +271,7 @@ class _AddNewSalePageState extends State<AddNewSalePage> {
     try {
       final newSaleData = await ApiService.postSaleData(
         requestBody,
-        _authToken!,
+       
       );
 
       print("DEBUG: API Response Received: $newSaleData");
@@ -332,7 +332,7 @@ class _AddNewSalePageState extends State<AddNewSalePage> {
   Future<void> _fetchClients() async {
     if (mounted) setState(() => _isLoadingClients = true);
     try {
-      final clients = await ApiService.fetchClients(_authToken!);
+      final clients = await ApiService.fetchClients();
       if (mounted) {
         setState(() {
           _allClients = clients;

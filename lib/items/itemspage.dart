@@ -2,9 +2,7 @@ import 'package:billcare/api/api_service.dart'; // Assumed dependency
 import 'package:billcare/items/add.dart';
 import 'package:billcare/items/category.dart';
 import 'package:billcare/items/edit.dart'; // Assumed dependency
-import 'package:billcare/screens/auth_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Assumed dependency
 
 class ItemScreen extends StatefulWidget {
   const ItemScreen({super.key});
@@ -50,56 +48,48 @@ class _ItemScreenState extends State<ItemScreen>
     });
   }
 
-  Future<void> loadItems() async {
-   final token = await AuthStorage.getToken() ?? "";
+Future<void> loadItems() async {
+  try {
+    final fetchedItems = await ApiService.fetchItemList();
 
+    if (mounted) {
+      setState(() {
+        items = fetchedItems;
+      });
+    }
+  } catch (e) {
+    debugPrint("❌ Error fetching items: $e");
+  }
+}
 
-    try {
-      final fetchedItems = await ApiService.fetchItemList(token);
-      if (mounted) {
-        setState(() {
-          items = fetchedItems;
-        });
-      }
-    } catch (e) {
-      print("❌ Error fetching items: $e");
+Future<void> loadCategories() async {
+  try {
+    final fetchedCategories = await ApiService.fetchCategoryList();
+
+    if (mounted) {
+      setState(() {
+        categories = fetchedCategories;
+      });
+    }
+  } catch (e) {
+    debugPrint("❌ Error fetching categories: $e");
+
+    if (mounted) {
+      setState(() {
+        categories = [];
+      });
     }
   }
-
-  Future<void> loadCategories() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
-
-    try {
-      final fetchedCategories = await ApiService.fetchCategoryList(token);
-      if (mounted) {
-        setState(() {
-          categories = fetchedCategories;
-        });
-      }
-    } catch (e) {
-      print("❌ Error fetching categories: $e");
-      // Fallback
-      if (mounted) {
-        setState(() {
-          categories = [
-            {'Name': 'Electronics', 'id': 'temp1'},
-            {'Name': 'Groceries', 'id': 'temp2'},
-          ];
-        });
-      }
-    }
-  }
+}
 
   Future<void> _addCategory(String name) async {
     setState(() {
       isCategoryProcessing = true;
     });
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
+   
 
     try {
-      await ApiService.storeCategory(token, name);
+      await ApiService.storeCategory(name);
       await loadCategories();
       // Close the dialog/bottom sheet after success
       if (mounted) Navigator.pop(context);
@@ -116,25 +106,31 @@ class _ItemScreenState extends State<ItemScreen>
     }
   }
 
-  Future<void> _updateCategory(dynamic categoryToUpdate, String newName) async {
-    setState(() {
-      isCategoryProcessing = true;
-    });
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
+ Future<void> _updateCategory(dynamic categoryToUpdate, String newName) async {
+  setState(() {
+    isCategoryProcessing = true;
+  });
 
-    try {
-      await ApiService.updateCategory(token, categoryToUpdate['id'], newName);
-      await loadCategories();
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      print("❌ Error updating category: $e");
-    } finally {
+  try {
+    await ApiService.updateCategory(
+      categoryToUpdate['id'], // ✅ only id
+      newName,
+    );
+
+    await loadCategories();
+
+    if (mounted) Navigator.pop(context);
+  } catch (e) {
+    debugPrint("❌ Error updating category: $e");
+  } finally {
+    if (mounted) {
       setState(() {
         isCategoryProcessing = false;
       });
     }
   }
+}
+
 
   void _showCategoryBottomSheet({dynamic category}) {
    

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:billcare/api/api_service.dart';
-import 'package:http/http.dart' as http;
+
 
 class AddItemBottomSheet extends StatefulWidget {
   const AddItemBottomSheet({super.key});
@@ -28,90 +27,82 @@ class _AddItemBottomSheetState extends State<AddItemBottomSheet> {
     _loadData();
   }
 
-  Future<void> _loadData() async {
-    setState(() => isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
-    final fetchedUnits = await ApiService.getUnit(token);
+ Future<void> _loadData() async {
+  setState(() => isLoading = true);
+
+  try {
+    final fetchedUnits = await ApiService.getUnit();
+    if (!mounted) return;
 
     setState(() {
-      units = fetchedUnits;
-      isLoading = false;
+      units = fetchedUnits.cast<Map<String, dynamic>>();
     });
+  } catch (e) {
+    debugPrint("❌ load units error: $e");
+  } finally {
+    if (mounted) setState(() => isLoading = false);
   }
+}
 
-  Future<void> storeItem() async {
-    print("Storing item with:");
-    print("Type: $selectedType");
-    print("ItemName: ${itemNameCtrl.text.trim()}");
-    print("Price: ${priceCtrl.text.trim()}");
-    print("Selected UnitId: $selectedUnitId");
+Future<void> storeItem() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    if (selectedUnitId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please select a Unit")));
-      return;
-    }
-
-    // Safely find the selected unit
-    final unitObj = units.firstWhere(
-      (u) => u["id"].toString() == selectedUnitId,
-      orElse: () => {},
+  if (selectedUnitId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select a Unit")),
     );
-
-    if (unitObj.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Invalid Unit selected")));
-      return;
-    }
-
-    final unitName = unitObj["Unit"];
-    print("Resolved Unit Name: $unitName");
-
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
-
-    try {
-      final url = Uri.parse("https://gst.billcare.in/api/inc_exp/item/store");
-      final body = {
-        "Type": selectedType,
-        "ItemName": itemNameCtrl.text.trim(),
-        "Price": priceCtrl.text.trim(),
-        "Unit": unitName,
-      };
-
-      final response = await http.post(
-        url,
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-        },
-        body: body,
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Item Added Successfully")),
-        );
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Failed: ${response.body}")));
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      setState(() => isLoading = false);
-    }
+    return;
   }
+
+  final unitObj = units.firstWhere(
+    (u) => u["id"].toString() == selectedUnitId,
+    orElse: () => {},
+  );
+
+  if (unitObj.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Invalid Unit selected")),
+    );
+    return;
+  }
+
+  final body = {
+    "Type": selectedType,
+    "ItemName": itemNameCtrl.text.trim(),
+    "Price": priceCtrl.text.trim(),
+    "Unit": unitObj["Unit"].toString(),
+  };
+
+  debugPrint("🚀 BottomSheet Item Payload: $body");
+
+  setState(() => isLoading = true);
+
+  try {
+    final success = await ApiService.storeIncomeExpenseItem(body);
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Item Added Successfully")),
+      );
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Failed to add item")),
+      );
+    }
+  } catch (e) {
+    debugPrint("❌ storeItem error: $e");
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("❌ Error while saving item")),
+    );
+  } finally {
+    if (mounted) setState(() => isLoading = false);
+  }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
@@ -35,37 +34,33 @@ Future<Uint8List> getPdfFileBytes() async {
   return await _generatePdf(_paymentData!);
 }
 
-  Future<void> _fetchPaymentData() async {
-    setState(() {
-      _isLoading = true;
-    });
+ Future<void> _fetchPaymentData() async {
+  setState(() => _isLoading = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    final authToken = prefs.getString('authToken');
-
-    if (authToken == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Authentication token not found.')),
-        );
-      }
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
+  try {
     final data = await ApiService.getPaymentData(
-      authToken,
       widget.paymentType,
       widget.paymentId,
     );
+
+    if (!mounted) return;
 
     setState(() {
       _paymentData = data;
       _isLoading = false;
     });
+  } catch (e) {
+    debugPrint("❌ fetchPaymentData error: $e");
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("❌ Failed to load payment data")),
+    );
   }
+}
 
   Future<Uint8List> _generatePdf(Map<String, dynamic> paymentData) async {
     final pdf = pw.Document();

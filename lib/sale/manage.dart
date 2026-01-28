@@ -134,7 +134,7 @@ class _SalesManagePageState extends State<SalesManagePage> {
       final Map<String, dynamic> requestBody = {'from': fromDate, 'to': toDate};
 
       final List<dynamic> fetchedSales = await ApiService.fetchSales(
-        _authToken!,
+     
         requestBody,
       );
       if (mounted) {

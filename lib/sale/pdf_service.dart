@@ -30,7 +30,6 @@ class PdfService {
         'Five',
         'Six',
         'Seven',
-        'Seven',
         'Eight',
         'Nine',
         'Ten',
@@ -147,11 +146,11 @@ class PdfService {
       }
 
       // 1. API से Sale Details Fetch करें
-      final Map<String, dynamic> fullSaleData =
-          await ApiService.fetchPrintSaleDetails(authToken, saleId);
+      final Map<String, dynamic>? fullSaleData =
+          await ApiService.fetchPrintSaleDetails( saleId);
 
       // 2. PDF Document Generate करें
-      final Uint8List pdfBytes = await _generatePdfDocument(fullSaleData);
+      final Uint8List pdfBytes = await _generatePdfDocument(fullSaleData!);
 
       // 3. File Path निर्धारित करें
       final baseDirectory = await getApplicationDocumentsDirectory();
@@ -205,11 +204,11 @@ class PdfService {
       throw Exception("Invalid Sale ID received.");
     }
 
-    final Map<String, dynamic> fullSaleData =
-        await ApiService.fetchPrintSaleDetails(authToken, saleId);
+    final Map<String, dynamic>? fullSaleData =
+        await ApiService.fetchPrintSaleDetails(saleId);
 
     // PDF जनरेट करें
-    final Uint8List pdfBytes = await _generatePdfDocument(fullSaleData);
+    final Uint8List pdfBytes = await _generatePdfDocument(fullSaleData!);
 
     // Printing.layoutPdf का उपयोग करके प्रिंट करें
     await Printing.layoutPdf(

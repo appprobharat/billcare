@@ -71,8 +71,8 @@ class _AddClientPageState extends State<AddClientPage> {
       if (token == null) throw Exception("Auth token not found.");
 
       final results = await Future.wait([
-        ApiService.getStates(token),
-        ApiService.getBank(token),
+        ApiService.getStates(),
+        ApiService.getBank(),
       ]);
 
       _states = results[0] as List<StateModel>;
@@ -81,7 +81,6 @@ class _AddClientPageState extends State<AddClientPage> {
       if (widget.clientId != null) {
         final clientDetails = await ApiService.getClientDetails(
           widget.clientId!,
-          token,
         );
         if (clientDetails != null) _populateFields(clientDetails);
       }
@@ -213,10 +212,8 @@ class _AddClientPageState extends State<AddClientPage> {
 
   Future<void> _saveClient() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSavingClient = true);
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken");
+    setState(() => _isSavingClient = true);
 
     Map<String, String> data = {
       "BusinessType": _businessType,
@@ -239,28 +236,30 @@ class _AddClientPageState extends State<AddClientPage> {
     };
 
     bool success;
+
     if (widget.clientId != null) {
       success = await ApiService.updateClient(
-        widget.clientId!,
+        widget.clientId!, // ✅ ONLY id
         data,
-        token!,
-        _clientImage,
+        _clientImage, // ✅ image
       );
     } else {
-      success = await ApiService.storeClient(data, token!, _clientImage);
+      success = await ApiService.storeClient(data, _clientImage);
     }
 
-    if (mounted) {
-      setState(() => _isSavingClient = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? "Client saved successfully" : "Failed to save client",
-          ),
+    if (!mounted) return;
+
+    setState(() => _isSavingClient = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success ? "Client saved successfully" : "Failed to save client",
         ),
-      );
-      if (success) Navigator.pop(context, true);
-    }
+      ),
+    );
+
+    if (success) Navigator.pop(context, true);
   }
 
   Widget _buildToggleButtons(

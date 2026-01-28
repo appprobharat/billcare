@@ -1,10 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Defined a primary color for a clean look
 const Color kPrimaryColor = Color(0xFF1E3A8A);
@@ -63,7 +60,8 @@ class _EditItemPageState extends State<EditItemPage> {
     {"value": "18", "label": "18%"},
     {"value": "28", "label": "28%"},
   ];
-
+  String? selectedCategoryName;
+  String? selectedUnitName;
   @override
   void initState() {
     super.initState();
@@ -103,7 +101,7 @@ class _EditItemPageState extends State<EditItemPage> {
   // 💡 NEW METHOD: Combine all data loading
   Future<void> _loadAllData() async {
     try {
-      await Future.wait<void>([loadCategories(), loadunits()]);
+      await Future.wait<void>([loadCategories(), loadUnits()]);
       // Categories and Units are loaded, now fetch item details
       await fetchItemDetails();
     } catch (e) {
@@ -122,19 +120,18 @@ class _EditItemPageState extends State<EditItemPage> {
     _overlayEntry = null;
   }
 
-  Future<void> loadCategories() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString("authToken");
-    if (token == null) return;
-
-    final categories = await ApiService.fetchCategories(token);
+ Future<void> loadCategories() async {
+  try {
+    final categories = await ApiService.fetchCategories();
 
     if (!mounted) return;
-    // setState here is fine, but we will combine it in _loadAllData for cleaner final render
     categoryList = categories;
 
-    print("✅ Categories Loaded: ${categoryList.length}");
+    debugPrint("✅ Categories Loaded: ${categoryList.length}");
+  } catch (e) {
+    debugPrint("❌ loadCategories error: $e");
   }
+}
 
   Future<void> pickImage() async {
     final picker = ImagePicker();
@@ -144,105 +141,65 @@ class _EditItemPageState extends State<EditItemPage> {
     }
   }
 
-  Future<void> loadunits() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString("authToken");
-    if (token == null) return;
-
-    final unit = await ApiService.getUnit(token);
+ Future<void> loadUnits() async {
+  try {
+    final unit = await ApiService.getUnit();
 
     if (!mounted) return;
-    // setState here is fine, but we will combine it in _loadAllData for cleaner final render
     unitLists = unit;
 
-    print("✅ Units Loaded: ${unitLists.length}");
+    debugPrint("✅ Units Loaded: ${unitLists.length}");
+  } catch (e) {
+    debugPrint("❌ loadUnits error: $e");
   }
+}
 
-  Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("authToken");
-  }
 
-  String? selectedCategoryName;
-  String? selectedUnitName;
-  Future<void> fetchItemDetails() async {
-    print("🔄 Fetching item details for ID: ${widget.itemId}");
+ Future<void> fetchItemDetails() async {
+  debugPrint("🔄 Fetching item details for ID: ${widget.itemId}");
+  setState(() => isLoading = true);
 
-    try {
-      final token = await getToken();
-      if (token == null) throw Exception("Authentication token not found.");
+  try {
+    final data = await ApiService.fetchItemForEdit(widget.itemId);
 
-      var response = await http.post(
-        Uri.parse("https://gst.billcare.in/api/item/edit"),
-        headers: {
-          "Accept": "application/json",
-          "Authorization": "Bearer $token",
-        },
-        body: {"ItemId": widget.itemId.toString()},
-      );
-
-      print("📡 API Response Code: ${response.statusCode}");
-      print("📡 API Raw Response: ${response.body}");
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print("✅ Parsed Item Data: $data");
-
-        if (!mounted) return;
-
-        setState(() {
-          // Assign values
-          nameController.text = data['Name']?.toString() ?? '';
-          selectedCategoryId = data['CategoryId']?.toString();
-          salePriceController.text = data['SalePrice']?.toString() ?? '';
-          mrpController.text = data['MRP']?.toString() ?? '';
-          hsnController.text = data['HSNCode']?.toString() ?? '';
-          selectedUnit = data['Unit']?.toString();
-          selectedType = data['Type']?.toString() ?? "Goods";
-          selectedGST = data['IGST']?.toString() ?? "0";
-          stockController.text = data['Stock']?.toString() ?? '';
-          partNoController.text = data['PartNo']?.toString() ?? '';
-          drgNoController.text = data['DrgNo']?.toString() ?? '';
-          skuController.text = data['SKUCode']?.toString() ?? '';
-          purchasePriceController.text =
-              data['PurchasePrice']?.toString() ?? '';
-          brandController.text = data['Brand']?.toString() ?? '';
-          existingImageUrl = data['Image']?.toString();
-          isLoading = false;
-        });
-
-        // ✅ Auto-select readable names for dropdown-like fields
-        _updateDisplayNames();
-
-        print("✅ UI Updated with Item Data:");
-        print("🟦 Name: ${nameController.text}");
-        print("🟨 Category: $selectedCategoryName");
-        print("🟩 Unit: $selectedUnitName");
-        print("🧾 GST: $selectedGST");
-        print("📦 Stock: ${stockController.text}");
-        print("💰 SalePrice: ${salePriceController.text}");
-        print("🏷️ Brand: ${brandController.text}");
-      } else {
-        print("❌ Failed to load item - Status: ${response.statusCode}");
-        print("❌ Response: ${response.body}");
-        if (!mounted) return;
-        setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "❌ Failed to load item (Status: ${response.statusCode})",
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      print("❌ Exception fetching item: $e");
-      if (mounted) setState(() => isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("❌ Error fetching item details.")),
-      );
+    if (data == null || !mounted) {
+      setState(() => isLoading = false);
+      return;
     }
+
+    setState(() {
+      nameController.text = data['Name']?.toString() ?? '';
+      selectedCategoryId = data['CategoryId']?.toString();
+      salePriceController.text = data['SalePrice']?.toString() ?? '';
+      mrpController.text = data['MRP']?.toString() ?? '';
+      hsnController.text = data['HSNCode']?.toString() ?? '';
+      selectedUnit = data['Unit']?.toString();
+      selectedType = data['Type']?.toString() ?? "Goods";
+      selectedGST = data['IGST']?.toString() ?? "0";
+      stockController.text = data['Stock']?.toString() ?? '';
+      partNoController.text = data['PartNo']?.toString() ?? '';
+      drgNoController.text = data['DrgNo']?.toString() ?? '';
+      skuController.text = data['SKUCode']?.toString() ?? '';
+      purchasePriceController.text =
+          data['PurchasePrice']?.toString() ?? '';
+      brandController.text = data['Brand']?.toString() ?? '';
+      existingImageUrl = data['Image']?.toString();
+      isLoading = false;
+    });
+
+    _updateDisplayNames();
+
+    debugPrint("✅ Item loaded successfully");
+  } catch (e) {
+    debugPrint("❌ fetchItemDetails error: $e");
+    if (mounted) setState(() => isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("❌ Error fetching item details")),
+    );
   }
+}
+
 
   void _updateDisplayNames() {
     // 🟦 Auto-fill Category Name
@@ -284,84 +241,69 @@ class _EditItemPageState extends State<EditItemPage> {
     );
   }
 
-  Future<void> updateItem() async {
-    if (!_formKey.currentState!.validate()) return;
+ Future<void> updateItem() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    if (selectedCategoryId == null || selectedUnit == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select Category and Unit.")),
-      );
-      return;
-    }
-
-    setState(() {
-      _isupdate = true;
-    });
-
-    try {
-      final token = await getToken();
-      if (token == null) {
-        if (mounted) setState(() => _isupdate = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Authentication failed. Please login again."),
-          ),
-        );
-        return;
-      }
-
-      final Map<String, String> itemData = {
-        "ItemId": widget.itemId.toString(),
-        "Type": selectedType ?? "Goods",
-        "Name": nameController.text.trim(),
-        "CategoryId": selectedCategoryId!,  
-        "SKUCode": skuController.text.trim(),
-        "PartNo": partNoController.text.trim(),
-        "DrgNo": drgNoController.text.trim(),
-        "HSNCode": hsnController.text.trim(),
-        "MRP": mrpController.text.trim(),
-        "SalePrice": salePriceController.text.trim(),
-        "PurchasePrice": purchasePriceController.text.trim(),
-        "Brand": brandController.text.trim(),
-        "Unit": selectedUnit!, 
-        "GST": selectedGST ?? "0",
-        "Stock": stockController.text.trim(),
-        "Image": itemImage == null ? existingImageUrl ?? '' : '',
-      };
-
-      bool success = await ApiService.updateItemWithImage(
-        itemData: itemData,
-        imageFile: itemImage,
-        token: token,
-      );
-
-      if (success) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("✅ Item updated successfully")),
-        );
-        Navigator.pop(context, true);
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("❌ Failed to update item. Check API logs."),
-          ),
-        );
-      }
-    } catch (e) {
-      print("❌ Error updating item: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Error updating item: ${e.toString()}")),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isupdate = false;
-        });
-      }
-    }
+  if (selectedCategoryId == null || selectedUnit == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select Category and Unit.")),
+    );
+    return;
   }
+
+  setState(() => _isupdate = true);
+
+  try {
+    final Map<String, String> itemData = {
+      "ItemId": widget.itemId.toString(),
+      "Type": selectedType ?? "Goods",
+      "Name": nameController.text.trim(),
+      "CategoryId": selectedCategoryId!,
+      "SKUCode": skuController.text.trim(),
+      "PartNo": partNoController.text.trim(),
+      "DrgNo": drgNoController.text.trim(),
+      "HSNCode": hsnController.text.trim(),
+      "MRP": mrpController.text.trim(),
+      "SalePrice": salePriceController.text.trim(),
+      "PurchasePrice": purchasePriceController.text.trim(),
+      "Brand": brandController.text.trim(),
+      "Unit": selectedUnit!,
+      "GST": selectedGST ?? "0",
+      "Stock": stockController.text.trim(),
+      // ⚠️ backend expects Image only when file uploaded
+      "Image": itemImage == null ? (existingImageUrl ?? "") : "",
+    };
+
+    final success = await ApiService.updateItemWithImage(
+      itemData: itemData,
+      imageFile: itemImage,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Item updated successfully")),
+      );
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❌ Failed to update item. Please try again."),
+        ),
+      );
+    }
+  } catch (e) {
+    debugPrint("❌ updateItem UI error: $e");
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("❌ Error updating item")),
+    );
+  } finally {
+    if (mounted) setState(() => _isupdate = false);
+  }
+}
+
 
   Widget _buildTypeToggleBar(String label1, String label2, String selected) {
     return SizedBox(
