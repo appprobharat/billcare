@@ -2,6 +2,7 @@ import 'package:billcare/api/api_service.dart'; // Assumed dependency
 import 'package:billcare/items/add.dart';
 import 'package:billcare/items/category.dart';
 import 'package:billcare/items/edit.dart'; // Assumed dependency
+import 'package:billcare/screens/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Assumed dependency
 
@@ -50,8 +51,8 @@ class _ItemScreenState extends State<ItemScreen>
   }
 
   Future<void> loadItems() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
+   final token = await AuthStorage.getToken() ?? "";
+
 
     try {
       final fetchedItems = await ApiService.fetchItemList(token);
@@ -136,6 +137,7 @@ class _ItemScreenState extends State<ItemScreen>
   }
 
   void _showCategoryBottomSheet({dynamic category}) {
+   
     if (isCategoryProcessing) {
       setState(() {
         isCategoryProcessing = false;

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:billcare/clients/add.dart';
+import 'package:billcare/screens/auth_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -22,23 +23,26 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool showPartyDetails = false;
-  bool isSidebarOpen = false;
-  String? savedPartyName;
-  String? savedAmount;
-  String? savedDate;
+  // bool isSidebarOpen = false;
+ 
   List<Map<String, dynamic>> savedData = [];
   String companyName = "Enter Company";
   String userName = "vishal";
   String userPhotoUrl = "";
-  void toggleSidebar() {
-    setState(() {
-      isSidebarOpen = !isSidebarOpen;
-    });
-  }
+  // void toggleSidebar() {
+  //   setState(() {
+  //     isSidebarOpen = !isSidebarOpen;
+  //   });
+  // }
 
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AuthGuard.ensureLoggedIn(context);
+    });
+
     _loadSavedData();
     _loadCompanyName();
   }
@@ -48,6 +52,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final savedName = prefs.getString('companyName') ?? "Enter Company";
     final name = prefs.getString("userName") ?? "User";
     final photo = prefs.getString("userPhotoUrl") ?? "";
+
+    if (!mounted) return;
     setState(() {
       companyName = savedName;
       userName = name;
@@ -120,17 +126,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final List<String>? jsonList = prefs.getStringList('salesData');
 
-    if (jsonList != null) {
-      setState(() {
-        savedData = jsonList.map((e) {
-          return json.decode(e) as Map<String, dynamic>;
-        }).toList();
-      });
-    } else {
-      setState(() {
-        savedData = [];
-      });
-    }
+    if (!mounted) return;
+
+if (jsonList != null) {
+  setState(() {
+    savedData = jsonList.map((e) {
+      return json.decode(e) as Map<String, dynamic>;
+    }).toList();
+  });
+} else {
+  setState(() {
+    savedData = [];
+  });
+}
+
   }
 
   @override

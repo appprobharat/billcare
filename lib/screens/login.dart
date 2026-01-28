@@ -1,5 +1,6 @@
 import 'package:billcare/api/api_service.dart';
 import 'package:billcare/home/dashboard_screen.dart';
+import 'package:billcare/screens/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -39,46 +40,32 @@ class _LoginPageState extends State<LoginPage> {
         final token = loginRes['token'] as String;
         final type = loginRes['type'] as String;
         final profile = loginRes['profile'] as Map<String, dynamic>;
-        final name = profile['name'] as String;
-        final company = profile['company'] as String;
-        final photo = profile['photo'] as String;
+
+        await AuthStorage.saveToken(token);
+        await AuthStorage.setLoggedIn(true);
 
         await prefs.setString("username", username);
-        await prefs.setString("authToken", token);
         await prefs.setString("userType", type);
-        await prefs.setString("userName", name);
-        await prefs.setString("companyName", company);
-        await prefs.setString("userPhotoUrl", photo);
+        await prefs.setString("userName", profile['name']);
+        await prefs.setString("companyName", profile['company']);
+        await prefs.setString("userPhotoUrl", profile['photo']);
 
-        // 🔥 iOS-safe FCM token handling
-        String? fcmToken =
-            await FirebaseMessaging.instance.getToken();
-
+        final fcmToken = await FirebaseMessaging.instance.getToken();
         if (fcmToken != null && fcmToken.isNotEmpty) {
-          final tokenRes = await ApiService.saveToken(
-            fcmToken,
-            token,
-          );
-          debugPrint("📲 Token Save Response: $tokenRes");
-        } else {
-          debugPrint("⚠ FCM token not available yet");
+          await ApiService.saveToken(fcmToken, token);
         }
 
         if (!mounted) return;
 
-        _showSnackBar("Login Successful ✅");
-
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const DashboardScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
         );
       } else {
         _showSnackBar(loginRes['message'] ?? "Login failed");
       }
     } catch (e) {
-      _showSnackBar("Error: $e");
+      _showSnackBar("Something went wrong. Please try again.");
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -87,14 +74,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _launchURL() async {
-    final Uri url =
-        Uri.parse('https://www.techinnovationapp.in');
+    final Uri url = Uri.parse('https://www.techinnovationapp.in');
 
     try {
-      if (!await launchUrl(
-        url,
-        mode: LaunchMode.externalApplication,
-      )) {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
         _showSnackBar("Could not open website");
       }
     } catch (e) {
@@ -104,8 +87,9 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -184,32 +168,26 @@ class _LoginPageState extends State<LoginPage> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed:
-                      _isLoading ? null : _login,
+                  onPressed: _isLoading ? null : _login,
                   child: _isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(
+                            valueColor: AlwaysStoppedAnimation<Color>(
                               Colors.white,
                             ),
                           ),
                         )
                       : const Text(
                           "Login",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white,
-                          ),
+                          style: TextStyle(fontSize: 16, color: Colors.white),
                         ),
                 ),
               ),
@@ -240,10 +218,7 @@ class _LoginPageState extends State<LoginPage> {
                     onTap: _launchURL,
                     child: const Text(
                       "www.techinnovationapp.in",
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.blue, fontSize: 12),
                     ),
                   ),
                 ],
@@ -253,5 +228,12 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }

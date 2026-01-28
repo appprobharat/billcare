@@ -6,15 +6,19 @@ import 'package:billcare/themedata.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint("🛌 Background notification: ${message.notification?.title}");
+  debugPrint("🔔 BG Notification: ${message.messageId}");
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Only minimal safe init here
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint("🔥 Firebase init error: $e");
+  }
 
+  // ⚠️ IMPORTANT: iOS-safe background handler
   FirebaseMessaging.onBackgroundMessage(
       _firebaseMessagingBackgroundHandler);
 
@@ -28,8 +32,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'BillCare',
-      theme: blueGoldTheme,
       debugShowCheckedModeBanner: false,
+      theme: blueGoldTheme,
       home: const SplashScreen(),
     );
   }
