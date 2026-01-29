@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class QuickReceiptPdfPage extends StatefulWidget {
   final int receiptId;
@@ -24,10 +25,25 @@ class _QuickReceiptPdfPageState extends State<QuickReceiptPdfPage> {
     _fetchPrintData();
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("authToken");
+Future<String?> _getToken() async {
+  final token = await AuthStorage.getToken();
+
+  if (token == null || token.isEmpty) {
+    if (!mounted) return null;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Session expired. Please login again."),
+      ),
+    );
+
+    Navigator.pop(context);
+    return null;
   }
+
+  return token;
+}
+
 
   Future<void> _fetchPrintData() async {
     final token = await _getToken();

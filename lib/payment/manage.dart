@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/payment/add.dart';
 import 'package:billcare/payment/payment_pdf.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class ManagePaymentPage extends StatefulWidget {
   const ManagePaymentPage({super.key});
@@ -34,10 +35,25 @@ class _ManagePaymentPageState extends State<ManagePaymentPage> {
     _fetchPayments();
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("authToken");
+ Future<String?> _getToken() async {
+  final token = await AuthStorage.getToken();
+
+  if (token == null || token.isEmpty) {
+    if (!mounted) return null;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Session expired. Please login again."),
+      ),
+    );
+
+    Navigator.pop(context);
+    return null;
   }
+
+  return token;
+}
+
 
   String _formatApiDate(String? apiDate) {
     if (apiDate == null || apiDate.isEmpty) {

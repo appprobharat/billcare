@@ -1,6 +1,5 @@
 import 'package:billcare/clients/add.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:billcare/clients/model.dart';
 
@@ -35,42 +34,35 @@ class _ManageClientPageState extends State<ManageClientPage> {
   }
 
   // Fetches the client list from the API
-  Future<void> _fetchClients() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+Future<void> _fetchClients() async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
 
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString("authToken");
+  try {
+    final List<dynamic> clientData = await ApiService.getClientList();
+    final clients =
+        clientData.map((e) => ClientModel.fromJson(e)).toList();
 
-    try {
-      if (token == null) {
-        throw Exception("Auth token not found.");
-      }
-      final List<dynamic> clientData = await ApiService.getClientList();
-      final List<ClientModel> clients = clientData
-          .map((json) => ClientModel.fromJson(json))
-          .toList();
-
-      if (mounted) {
-        setState(() {
-          _allClients = clients;
-          _filteredClients = clients;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage =
-              "Failed to load clients. Please check your connection.";
-        });
-      }
-      print("Error fetching clients: $e");
+    if (mounted) {
+      setState(() {
+        _allClients = clients;
+        _filteredClients = clients;
+        _isLoading = false;
+      });
     }
+  } catch (e) {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage =
+            "Failed to load clients. Please check your connection.";
+      });
+    }
+    debugPrint("❌ Error fetching clients: $e");
   }
+}
 
   // Filters the client list based on the search query
   void _filterClients() {

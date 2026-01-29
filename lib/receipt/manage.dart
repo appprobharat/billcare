@@ -1,10 +1,11 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/receipt/add.dart';
 import 'package:billcare/receipt/receipt_pdf.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class ManageReceiptPage extends StatefulWidget {
   const ManageReceiptPage({super.key});
@@ -36,11 +37,25 @@ class _ManageReceiptPageState extends State<ManageReceiptPage> {
     toDateController.text = DateFormat('dd-MM-yyyy').format(today);
     _fetchReceipts();
   }
+Future<String?> _getToken() async {
+  final token = await AuthStorage.getToken();
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("authToken");
+  if (token == null || token.isEmpty) {
+    if (!mounted) return null;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Session expired. Please login again."),
+      ),
+    );
+
+    Navigator.pop(context);
+    return null;
   }
+
+  return token;
+}
+
 
   Future<void> _fetchReceipts() async {
     if (!_isLoading) {

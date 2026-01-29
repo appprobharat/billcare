@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/sale/editsaleitem.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -293,22 +294,24 @@ class _EditSalePageState extends State<EditSalePage> {
     }
   }
 
-  Future<void> _loadAuthTokenAndClients() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('authToken');
+ Future<void> _loadAuthTokenAndClients() async {
+  _authToken = await AuthStorage.getToken();
 
-    if (_authToken != null) {
-      await _fetchClients();
-    } else {
-      if (mounted) {
-        setState(() => _isLoadingClients = false);
-        _showSnackbar(
-          "Authentication failed. Please log in again.",
-          Colors.red,
-        );
-      }
-    }
+  if (_authToken == null || _authToken!.isEmpty) {
+    if (!mounted) return;
+
+    _showSnackbar(
+      "Session expired. Please login again.",
+      Colors.red,
+    );
+
+    Navigator.pop(context);
+    return;
   }
+
+  await _fetchClients();
+}
+
 
   Future<void> _fetchClients() async {
     if (mounted) setState(() => _isLoadingClients = true);

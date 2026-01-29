@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:billcare/screens/auth_helper.dart';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:billcare/clients/model.dart';
@@ -1336,4 +1336,42 @@ static Future<bool> updateIncomeExpenseItem(
       return null;
     }
   }
+  static Future<bool> storeIncomeExpenseCategory({
+  required String type,
+  required String category,
+}) async {
+  final url = Uri.parse(
+    "$baseUrl/inc_exp/category/store",
+  );
+
+  try {
+    final response = await http.post(
+      url,
+      headers: await authHeaders(
+        contentType: 'application/x-www-form-urlencoded',
+      ),
+      body: {
+        "Type": type,
+        "Category": category,
+      },
+    );
+
+    debugPrint("🟢 Category Store Status: ${response.statusCode}");
+    debugPrint("🟢 Category Store Body: ${response.body}");
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return true;
+    }
+
+    if (response.statusCode == 401) {
+      await AuthStorage.logout();
+    }
+
+    return false;
+  } catch (e) {
+    debugPrint("❌ storeIncomeExpenseCategory error: $e");
+    return false;
+  }
+}
+
 }

@@ -1,8 +1,9 @@
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/income_expense/add_income.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'dart:convert';
 
 class IncomeListPage extends StatefulWidget {
@@ -80,8 +81,17 @@ class _IncomeListPageState extends State<IncomeListPage> {
   Future<void> fetchIncomeList() async {
     setState(() => isLoading = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString("authToken") ?? "";
+   final token = await AuthStorage.getToken();
+
+if (token == null || token.isEmpty) {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Session expired. Please login again.")),
+  );
+  Navigator.pop(context);
+  return;
+}
+
 
       final url = Uri.parse("https://gst.billcare.in/api/income/list");
 

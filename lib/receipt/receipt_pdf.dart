@@ -1,6 +1,7 @@
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
@@ -36,20 +37,20 @@ class _ReceiptPrintPageState extends State<ReceiptPrintPage> {
       _isLoading = true;
     });
 
-    final prefs = await SharedPreferences.getInstance();
-    final authToken = prefs.getString('authToken');
+   final authToken = await AuthStorage.getToken();
 
-    if (authToken == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Authentication token not found.')),
-        );
-      }
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
+if (authToken == null || authToken.isEmpty) {
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text("Session expired. Please login again."),
+    ),
+  );
+
+  Navigator.pop(context);
+  return;
+}
 
     final data = await ApiService.getReceiptData(
       

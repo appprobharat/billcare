@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:billcare/clients/add.dart';
-import 'package:billcare/screens/auth_helper.dart';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';

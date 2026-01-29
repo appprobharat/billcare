@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -312,22 +313,24 @@ class _AddNewSalePageState extends State<AddNewSalePage> {
     print("--- Save FormData Finished ---");
   }
 
-  Future<void> _loadAuthTokenAndClients() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('authToken');
+ Future<void> _loadAuthTokenAndClients() async {
+  _authToken = await AuthStorage.getToken();
 
-    if (_authToken != null) {
-      await _fetchClients();
-    } else {
-      if (mounted) {
-        setState(() => _isLoadingClients = false);
-        _showSnackbar(
-          "Authentication failed. Please log in again.",
-          Colors.red,
-        );
-      }
-    }
+  if (_authToken != null && _authToken!.isNotEmpty) {
+    await _fetchClients();
+  } else {
+    if (!mounted) return;
+
+    setState(() => _isLoadingClients = false);
+
+    _showSnackbar(
+      "Session expired. Please login again.",
+      Colors.red,
+    );
+
+    Navigator.pop(context);
   }
+}
 
   Future<void> _fetchClients() async {
     if (mounted) setState(() => _isLoadingClients = true);

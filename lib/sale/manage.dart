@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:billcare/api/api_service.dart';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/sale/edit.dart';
 import 'package:billcare/sale/pdf_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:billcare/sale/add.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ClientData {
@@ -86,27 +86,37 @@ class _SalesManagePageState extends State<SalesManagePage> {
 
   // --- API & Data Handling ---
 
-  Future<void> _loadAuthTokenAndClients() async {
-    setState(() => _isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('authToken');
+ Future<void> _loadAuthTokenAndClients() async {
+  if (!mounted) return;
 
-    if (_authToken == null) {
-      if (mounted) {
-        _showSnackbar("Authentication token is missing.", Colors.red);
-      }
-      setState(() => _isLoading = false);
-      return;
+  setState(() => _isLoading = true);
+
+  _authToken = await AuthStorage.getToken();
+
+  if (_authToken == null || _authToken!.isEmpty) {
+    if (mounted) {
+      _showSnackbar(
+        "Session expired. Please login again.",
+        Colors.red,
+      );
     }
-    try {
-      await _searchSales(shouldClearClientFilter: false);
-    } catch (e) {
-      if (mounted) _showSnackbar('Error fetching clients: $e', Colors.red);
-      await _searchSales(shouldClearClientFilter: false);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    setState(() => _isLoading = false);
+    return;
+  }
+
+  try {
+    await _searchSales(shouldClearClientFilter: false);
+  } catch (e) {
+    if (mounted) {
+      _showSnackbar("Error fetching sales: $e", Colors.red);
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
+}
+
 
   Future<void> _searchSales({bool shouldClearClientFilter = true}) async {
     if (_authToken == null || _authToken!.isEmpty) {

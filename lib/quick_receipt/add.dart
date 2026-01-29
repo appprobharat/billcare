@@ -1,6 +1,7 @@
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class AddQuickReceiptPage extends StatefulWidget {
   const AddQuickReceiptPage({super.key});
@@ -19,12 +20,25 @@ class _AddQuickReceiptPageState extends State<AddQuickReceiptPage> {
 
   bool _isSaving = false;
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('authToken');
-    print("🔑 Token Loaded: $token");
-    return token;
+ Future<String?> _getToken() async {
+  final token = await AuthStorage.getToken();
+
+  if (token == null || token.isEmpty) {
+    if (!mounted) return null;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Session expired. Please login again."),
+      ),
+    );
+
+    Navigator.pop(context);
+    return null;
   }
+
+  return token;
+}
+
 
   Future<void> _saveQuickReceipt() async {
     if (!_formKey.currentState!.validate()) return;

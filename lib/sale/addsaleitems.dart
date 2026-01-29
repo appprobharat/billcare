@@ -1,6 +1,7 @@
 import 'package:billcare/api/api_service.dart';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 // --- Item Model (No Change) ---
 class Item {
@@ -121,16 +122,21 @@ class _AddSaleItemsPageState extends State<AddSaleItemsPage> {
       });
     }
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('authToken');
-      if (token == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Authentication token missing.')),
-          );
-        }
-        return;
-      }
+      final token = await AuthStorage.getToken();
+
+if (token == null || token.isEmpty) {
+  if (!mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Session expired. Please login again.'),
+    ),
+  );
+
+  Navigator.pop(context);
+  return;
+}
+
       final itemData = await ApiService.fetchItems();
       if (mounted) {
         setState(() {

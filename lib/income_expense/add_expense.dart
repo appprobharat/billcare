@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class AddExpensePage extends StatefulWidget {
   final int? expenseId;
@@ -132,13 +133,22 @@ class _AddExpensePageState extends State<AddExpensePage> {
     }
   }
 
-  Future<void> loadToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    authToken = prefs.getString("authToken") ?? "";
+ Future<void> loadToken() async {
+  authToken = await AuthStorage.getToken();
 
-    await fetchCategories();
-    await fetchItems();
+  if (authToken == null || authToken!.isEmpty) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Session expired. Please login again.")),
+    );
+    Navigator.pop(context);
+    return;
   }
+
+  await fetchCategories();
+  await fetchItems();
+}
+
 
   Future<void> saveExpense() async {
     if (items.isEmpty) {

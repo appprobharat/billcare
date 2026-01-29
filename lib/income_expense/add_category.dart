@@ -1,6 +1,6 @@
+import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class AddCategoryBottomSheet extends StatefulWidget {
   const AddCategoryBottomSheet({super.key});
@@ -14,65 +14,48 @@ class _AddCategoryBottomSheetState extends State<AddCategoryBottomSheet> {
   String selectedType = "Income";
   bool isLoading = false;
 
-  Future<void> storeCategory() async {
-    setState(() => isLoading = true);
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString("authToken") ?? "";
-
-      if (token.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Token not found. Please login again.")),
-        );
-        setState(() => isLoading = false);
-        return;
-      }
-
-      final url = Uri.parse(
-        "https://gst.billcare.in/api/inc_exp/category/store",
-      );
-
-      final String apiType = selectedType == "Income" ? "Income" : "Expenses";
-
-      /// ⭐ FORM-DATA POST with token
-      final response = await http.post(
-        url,
-        headers: {
-          "Authorization": "Bearer $token",
-          "Accept": "application/json",
-        },
-        body: {"Type": apiType, "Category": categoryCtrl.text.trim()},
-      );
-
-      print("🔵 Status: ${response.statusCode}");
-      print("🔵 Body: ${response.body}");
-
-      setState(() => isLoading = false);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Category Added Successfully")),
-        );
-
-        Navigator.pop(context, {
-          "type": apiType,
-          "categoryName": categoryCtrl.text.trim(),
-        });
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Failed: ${response.body}")));
-      }
-    } catch (e) {
-      setState(() => isLoading = false);
-      print("❌ Error: $e");
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
-    }
+ Future<void> storeCategory() async {
+  if (categoryCtrl.text.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Category name required")),
+    );
+    return;
   }
+
+  setState(() => isLoading = true);
+
+  try {
+    final String apiType =
+        selectedType == "Income" ? "Income" : "Expenses";
+
+    final success = await ApiService.storeIncomeExpenseCategory(
+      type: apiType,
+      category: categoryCtrl.text.trim(),
+    );
+
+    setState(() => isLoading = false);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Category Added Successfully")),
+      );
+
+      Navigator.pop(context, {
+        "type": apiType,
+        "categoryName": categoryCtrl.text.trim(),
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to add category")),
+      );
+    }
+  } catch (e) {
+    setState(() => isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error: $e")),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {

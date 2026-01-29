@@ -1,6 +1,6 @@
 import 'package:billcare/api/api_service.dart';
 import 'package:billcare/home/dashboard_screen.dart';
-import 'package:billcare/screens/auth_helper.dart';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -20,58 +20,60 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  Future<void> _login() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
+Future<void> _login() async {
+  final username = _usernameController.text.trim();
+  final password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
-      _showSnackBar("Please enter username and password");
-      return;
+  if (username.isEmpty || password.isEmpty) {
+    _showSnackBar("Please enter username and password");
+    return;
+  }
+
+  setState(() => _isLoading = true);
+
+  try {
+    final loginRes = await ApiService.login(username, password);
+
+    if (loginRes['status'] == true) {
+      final prefs = await SharedPreferences.getInstance();
+
+      final String token = loginRes['token'];
+      final String type = loginRes['type'];
+      final Map<String, dynamic> profile = loginRes['profile'];
+
+      // 🔐 TOKEN → SECURE STORAGE (ONLY)
+      await AuthStorage.saveToken(token);
+
+      // 🧾 NON-SENSITIVE DATA → SharedPreferences
+      await prefs.setString("username", username);
+      await prefs.setString("userType", type);
+      await prefs.setString("userName", profile['name'] ?? '');
+      await prefs.setString("companyName", profile['company'] ?? '');
+      await prefs.setString("userPhotoUrl", profile['photo'] ?? '');
+
+      // 🔔 FCM Token
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        await ApiService.saveToken(fcmToken);
+      }
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      );
+    } else {
+      _showSnackBar(loginRes['message'] ?? "Login failed");
     }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final loginRes = await ApiService.login(username, password);
-
-      if (loginRes['status'] == true) {
-        final prefs = await SharedPreferences.getInstance();
-
-        final token = loginRes['token'] as String;
-        final type = loginRes['type'] as String;
-        final profile = loginRes['profile'] as Map<String, dynamic>;
-
-        await AuthStorage.saveToken(token);
-        await AuthStorage.setLoggedIn(true);
-
-        await prefs.setString("username", username);
-        await prefs.setString("userType", type);
-        await prefs.setString("userName", profile['name']);
-        await prefs.setString("companyName", profile['company']);
-        await prefs.setString("userPhotoUrl", profile['photo']);
-
-        final fcmToken = await FirebaseMessaging.instance.getToken();
-        if (fcmToken != null && fcmToken.isNotEmpty) {
-          await ApiService.saveToken(fcmToken);
-        }
-
-        if (!mounted) return;
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
-      } else {
-        _showSnackBar(loginRes['message'] ?? "Login failed");
-      }
-    } catch (e) {
-      _showSnackBar("Something went wrong. Please try again.");
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+  } catch (e) {
+    _showSnackBar("Something went wrong. Please try again.");
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
+}
 
   void _launchURL() async {
     final Uri url = Uri.parse('https://www.techinnovationapp.in');

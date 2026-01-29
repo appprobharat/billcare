@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class AddPaymentPage extends StatefulWidget {
   final bool isEdit;
@@ -82,8 +83,10 @@ class _AddPaymentPageState extends State<AddPaymentPage> {
 
   /// 🔹 Get token from SharedPreferences
   Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken");
+    final token = await AuthStorage.getToken();
+
+
+
     print("🔑 Token Loaded: $token");
     return token;
   }

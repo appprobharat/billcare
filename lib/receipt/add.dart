@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class AddReceiptPage extends StatefulWidget {
   final bool isEdit;
@@ -98,11 +99,25 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
   // --- Network Methods ---
 
   /// Retrieves the authentication token from SharedPreferences.
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken");
-    return token;
+ Future<String?> _getToken() async {
+  final token = await AuthStorage.getToken();
+
+  if (token == null || token.isEmpty) {
+    if (!mounted) return null;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Session expired. Please login again."),
+      ),
+    );
+
+    Navigator.pop(context);
+    return null;
   }
+
+  return token;
+}
+
 
   /// Fetches the list of clients based on the selected receipt type.
   Future<void> _fetchClients(String type) async {

@@ -1,8 +1,8 @@
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/income_expense/edit_category.dart';
 import 'package:billcare/income_expense/add_category.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class CategoryListPage extends StatefulWidget {
@@ -31,8 +31,17 @@ class _CategoryListPageState extends State<CategoryListPage> {
       isLoading = true; // ⭐ Show Loader
     });
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("authToken") ?? "";
+   final token = await AuthStorage.getToken();
+
+if (token == null || token.isEmpty) {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Session expired. Please login again.")),
+  );
+  Navigator.pop(context);
+  return;
+}
+
 
     if (token.isEmpty) {
       setState(() => isLoading = false);

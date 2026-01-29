@@ -1,13 +1,14 @@
 // ignore_for_file: avoid_print
 
 import 'dart:convert';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/quick_receipt/add.dart';
 import 'package:billcare/quick_receipt/edit.dart';
 import 'package:billcare/quick_receipt/quick_pdf.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+
 
 class ManageQuickReceiptPage extends StatefulWidget {
   const ManageQuickReceiptPage({super.key});
@@ -37,10 +38,25 @@ class _ManageQuickReceiptPageState extends State<ManageQuickReceiptPage> {
     });
   }
 
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("authToken");
+Future<String?> _getToken() async {
+  final token = await AuthStorage.getToken();
+
+  if (token == null || token.isEmpty) {
+    if (!mounted) return null;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Session expired. Please login again."),
+      ),
+    );
+
+    Navigator.pop(context);
+    return null;
   }
+
+  return token;
+}
+
 
   Future<void> _fetchReceipts() async {
     setState(() {

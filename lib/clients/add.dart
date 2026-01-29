@@ -1,9 +1,8 @@
-// ignore_for_file: use_build_context_synchronously, avoid_print, unused_field
+
 import 'dart:io';
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:collection/collection.dart';
 import 'package:billcare/clients/model.dart';
 
@@ -17,7 +16,6 @@ class AddClientPage extends StatefulWidget {
 class _AddClientPageState extends State<AddClientPage> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoadingData = true;
-  String? _errorMessage;
 
   List<StateModel> _states = [];
   List<BankModel> _banks = [];
@@ -46,7 +44,7 @@ class _AddClientPageState extends State<AddClientPage> {
   bool _showStateList = false;
   bool _showBankList = false;
 
-  final _stateFocusNode = FocusNode();
+
 
   final LayerLink _stateLayerLink = LayerLink();
   final LayerLink _bankLayerLink = LayerLink();
@@ -60,20 +58,17 @@ class _AddClientPageState extends State<AddClientPage> {
 
   Future<void> _fetchInitialDataAndPopulate() async {
     print("Fetching initial data...");
-    setState(() {
-      _isLoadingData = true;
-      _errorMessage = null;
-    });
-    final prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString("authToken");
+    setState(() => _isLoadingData = true);
 
-    try {
-      if (token == null) throw Exception("Auth token not found.");
+  try {
+    final results = await Future.wait([
+      ApiService.getStates(),
+      ApiService.getBank(),
+    ]);
+  
 
-      final results = await Future.wait([
-        ApiService.getStates(),
-        ApiService.getBank(),
-      ]);
+   
+    
 
       _states = results[0] as List<StateModel>;
       _banks = results[1] as List<BankModel>;
@@ -90,7 +85,6 @@ class _AddClientPageState extends State<AddClientPage> {
       if (mounted) {
         setState(() {
           _isLoadingData = false;
-          _errorMessage = "Failed to load data.";
         });
       }
       print("Error: $e");
