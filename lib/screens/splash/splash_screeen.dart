@@ -1,8 +1,7 @@
-import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/screens/login.dart';
 import 'package:billcare/home/dashboard_screen.dart';
-
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,18 +18,20 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _boot() async {
-    // ✅ Simple & iOS safe
-    await Future.delayed(const Duration(seconds: 2));
+    // ⏳ Small delay for smooth UX
+    await Future.delayed(const Duration(seconds: 1));
 
-    final loggedIn = await AuthStorage.isLoggedIn();
+    // 🔑 SINGLE SOURCE OF TRUTH
+    final token = await AuthStorage.getToken();
 
     if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            loggedIn ? const DashboardScreen() : const LoginPage(),
+        builder: (_) => (token != null && token.isNotEmpty)
+            ? const DashboardScreen()
+            : const LoginPage(),
       ),
     );
   }

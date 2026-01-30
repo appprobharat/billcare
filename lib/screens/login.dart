@@ -20,60 +20,71 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-Future<void> _login() async {
-  final username = _usernameController.text.trim();
-  final password = _passwordController.text.trim();
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
-  if (username.isEmpty || password.isEmpty) {
-    _showSnackBar("Please enter username and password");
-    return;
-  }
+    if (username.isEmpty || password.isEmpty) {
+      _showSnackBar("Please enter username and password");
+      return;
+    }
 
-  setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-  try {
-    final loginRes = await ApiService.login(username, password);
+    try {
+      final loginRes = await ApiService.login(username, password);
+      debugPrint("LOGIN RESPONSE: $loginRes");
 
-    if (loginRes['status'] == true) {
-      final prefs = await SharedPreferences.getInstance();
+      if (loginRes['status'] == true) {
+        final token = loginRes['token']?.toString() ?? '';
+        if (token.isEmpty) {
+          _showSnackBar("Login failed: token missing");
+          return;
+        }
 
-      final String token = loginRes['token'];
-      final String type = loginRes['type'];
-      final Map<String, dynamic> profile = loginRes['profile'];
+        final profile = (loginRes['profile'] is Map<String, dynamic>)
+            ? loginRes['profile']
+            : {};
 
-      // 🔐 TOKEN → SECURE STORAGE (ONLY)
-      await AuthStorage.saveToken(token);
+        await AuthStorage.saveToken(token);
 
-      // 🧾 NON-SENSITIVE DATA → SharedPreferences
-      await prefs.setString("username", username);
-      await prefs.setString("userType", type);
-      await prefs.setString("userName", profile['name'] ?? '');
-      await prefs.setString("companyName", profile['company'] ?? '');
-      await prefs.setString("userPhotoUrl", profile['photo'] ?? '');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("username", username);
+        await prefs.setString("userType", loginRes['type']?.toString() ?? '');
+        await prefs.setString("userName", profile['name']?.toString() ?? '');
+        await prefs.setString(
+          "companyName",
+          profile['company']?.toString() ?? '',
+        );
+        await prefs.setString(
+          "userPhotoUrl",
+          profile['photo']?.toString() ?? '',
+        );
 
-      // 🔔 FCM Token
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken != null && fcmToken.isNotEmpty) {
-        await ApiService.saveToken(fcmToken);
+        // 🔕 DO NOT AWAIT FCM (background me jaane do)
+        FirebaseMessaging.instance.getToken().then((fcmToken) {
+          if (fcmToken != null && fcmToken.isNotEmpty) {
+            ApiService.saveToken(fcmToken);
+          }
+        });
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      } else {
+        _showSnackBar(loginRes['message']?.toString() ?? "Login failed");
       }
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      );
-    } else {
-      _showSnackBar(loginRes['message'] ?? "Login failed");
-    }
-  } catch (e) {
-    _showSnackBar("Something went wrong. Please try again.");
-  } finally {
-    if (mounted) {
-      setState(() => _isLoading = false);
+    } catch (e, s) {
+      debugPrint("LOGIN ERROR: $e");
+      debugPrint("STACKTRACE: $s");
+      _showSnackBar("Login error occurred");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
-}
 
   void _launchURL() async {
     final Uri url = Uri.parse('https://www.techinnovationapp.in');

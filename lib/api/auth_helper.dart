@@ -7,8 +7,7 @@ import 'package:billcare/screens/login.dart';
 /// 🔐 AUTH STORAGE
 /// =======================
 class AuthStorage {
-  static const FlutterSecureStorage _secure =
-      FlutterSecureStorage();
+  static const FlutterSecureStorage _secure = FlutterSecureStorage();
 
   // 🔑 TOKEN (Secure)
   static Future<void> saveToken(String token) async {
@@ -19,7 +18,7 @@ class AuthStorage {
     return await _secure.read(key: 'auth_token');
   }
 
-  static Future<void> clearToken() async {
+  static Future<void> deleteToken() async {
     await _secure.delete(key: 'auth_token');
   }
 
@@ -35,7 +34,7 @@ class AuthStorage {
   }
 
   static Future<void> logout() async {
-    await clearToken();
+    await deleteToken();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   }
@@ -45,9 +44,7 @@ class AuthStorage {
 /// 🛡️ AUTH GUARD
 /// =======================
 class AuthGuard {
-  static Future<void> ensureLoggedIn(
-    BuildContext context,
-  ) async {
+  static Future<void> ensureLoggedIn(BuildContext context) async {
     final loggedIn = await AuthStorage.isLoggedIn();
     final token = await AuthStorage.getToken();
 
@@ -56,9 +53,7 @@ class AuthGuard {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => const LoginPage(),
-        ),
+        MaterialPageRoute(builder: (_) => const LoginPage()),
         (_) => false,
       );
     }

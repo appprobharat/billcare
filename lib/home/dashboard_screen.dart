@@ -24,7 +24,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool showPartyDetails = false;
   // bool isSidebarOpen = false;
- 
+
   List<Map<String, dynamic>> savedData = [];
   String companyName = "Enter Company";
   String userName = "vishal";
@@ -38,13 +38,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      AuthGuard.ensureLoggedIn(context);
-    });
-
+    _safeAuthCheck();
     _loadSavedData();
     _loadCompanyName();
+  }
+
+  Future<void> _safeAuthCheck() async {
+    final token = await AuthStorage.getToken();
+    debugPrint("DASHBOARD TOKEN: $token");
+
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, "/login");
+    }
   }
 
   Future<void> _loadCompanyName() async {
@@ -128,18 +134,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (!mounted) return;
 
-if (jsonList != null) {
-  setState(() {
-    savedData = jsonList.map((e) {
-      return json.decode(e) as Map<String, dynamic>;
-    }).toList();
-  });
-} else {
-  setState(() {
-    savedData = [];
-  });
-}
-
+    if (jsonList != null) {
+      setState(() {
+        savedData = jsonList.map((e) {
+          return json.decode(e) as Map<String, dynamic>;
+        }).toList();
+      });
+    } else {
+      setState(() {
+        savedData = [];
+      });
+    }
   }
 
   @override

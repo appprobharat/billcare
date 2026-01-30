@@ -1,3 +1,4 @@
+import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/clients/details.dart';
 import 'package:billcare/income_expense/category_items_list.dart';
 import 'package:billcare/income_expense/category_list.dart';
@@ -15,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:billcare/home/dashboard_screen.dart';
 import 'package:billcare/items/itemspage.dart';
 import 'package:billcare/sale/manage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LeftSidebar extends StatelessWidget {
   final String companyName;
@@ -409,26 +411,33 @@ class LeftSidebar extends StatelessWidget {
               ),
 
               // 13.Logout
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.red),
-                ),
+             // 13. Logout
+ListTile(
+  leading: const Icon(Icons.logout, color: Colors.red),
+  title: const Text(
+    'Logout',
+    style: TextStyle(color: Colors.red),
+  ),
+  onTap: () async {
 
-                onTap: () async {
-                  // 🔐 Clear SharedPreferences (logout)
-                  // final prefs = await SharedPreferences.getInstance();
-                  // await prefs.clear();
+    // 🔐 1. Delete secure token
+    await AuthStorage.deleteToken();
 
-                  // 🔁 Navigate to LoginPage (remove all previous routes)
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
-                  );
-                },
-              ),
+    // 🧾 2. Clear SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    if (!context.mounted) return;
+
+    // 🔁 3. Go to Login & clear navigation stack
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  },
+),
+
             ],
           ),
         ),
