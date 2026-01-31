@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:billcare/api/api_service.dart';
 import 'package:billcare/clients/add.dart';
 import 'package:billcare/api/auth_helper.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -41,17 +43,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _safeAuthCheck();
     _loadSavedData();
     _loadCompanyName();
+    _syncFcmToken();
   }
 
-  Future<void> _safeAuthCheck() async {
-    final token = await AuthStorage.getToken();
-    debugPrint("DASHBOARD TOKEN: $token");
+  Future<void> _syncFcmToken() async {
+    // iOS needs a delay after navigation
+    await Future.delayed(const Duration(seconds: 1));
 
-    if (token == null || token.isEmpty) {
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, "/login");
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    debugPrint("FCM TOKEN: $fcmToken");
+
+    if (fcmToken != null && fcmToken.isNotEmpty) {
+      await ApiService.saveToken(fcmToken);
     }
   }
+
+ Future<void> _safeAuthCheck() async {
+  await Future.delayed(const Duration(milliseconds: 300));
+
+  final token = await AuthStorage.getToken();
+  debugPrint("DASHBOARD TOKEN: $token");
+
+  if (!mounted) return;
+
+  if (token == null || token.isEmpty) {
+    Navigator.pushReplacementNamed(context, "/login");
+  }
+}
 
   Future<void> _loadCompanyName() async {
     final prefs = await SharedPreferences.getInstance();

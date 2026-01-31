@@ -3,7 +3,6 @@ import 'package:billcare/home/dashboard_screen.dart';
 import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LoginPage extends StatefulWidget {
@@ -21,6 +20,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
 
   Future<void> _login() async {
+    if (_isLoading) return;
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -39,6 +39,7 @@ class _LoginPageState extends State<LoginPage> {
         final token = loginRes['token']?.toString() ?? '';
         if (token.isEmpty) {
           _showSnackBar("Login failed: token missing");
+          if (mounted) setState(() => _isLoading = false);
           return;
         }
 
@@ -61,12 +62,6 @@ class _LoginPageState extends State<LoginPage> {
           profile['photo']?.toString() ?? '',
         );
 
-        // 🔕 DO NOT AWAIT FCM (background me jaane do)
-        FirebaseMessaging.instance.getToken().then((fcmToken) {
-          if (fcmToken != null && fcmToken.isNotEmpty) {
-            ApiService.saveToken(fcmToken);
-          }
-        });
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
