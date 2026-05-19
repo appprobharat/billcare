@@ -1,21 +1,33 @@
 import 'package:billcare/api/auth_helper.dart';
-import 'package:billcare/clients/details.dart';
-import 'package:billcare/income_expense/category_items_list.dart';
-import 'package:billcare/income_expense/category_list.dart';
-import 'package:billcare/income_expense/expense_list.dart';
-import 'package:billcare/income_expense/income_list.dart';
-import 'package:billcare/payment/manage.dart';
-import 'package:billcare/purchase/manage.dart';
-import 'package:billcare/quick_receipt/manage.dart';
-import 'package:billcare/receipt/manage.dart';
-import 'package:billcare/report/due_report.dart';
-import 'package:billcare/report/ledger/ledger.dart';
+import 'package:billcare/admin/challan/list_challan_in.dart';
+import 'package:billcare/admin/clients/details.dart';
+import 'package:billcare/api/api_service.dart';
+import 'package:billcare/home/new_dashboard.dart';
+import 'package:billcare/admin/report/item_stock.dart';
+import 'package:billcare/admin/report/state_wise_report.dart';
+import 'package:billcare/admin/sale_approval/approve_sale.dart';
+import 'package:billcare/admin/settings/chnage_password.dart';
+import 'package:billcare/admin/report/low_stock.dart';
+import 'package:billcare/admin/setup/department/department.dart';
+import 'package:billcare/admin/setup/designation/designation.dart';
+import 'package:billcare/admin/employee/details.dart';
+import 'package:billcare/admin/income_expense/category_items_list.dart';
+import 'package:billcare/admin/income_expense/category_list.dart';
+import 'package:billcare/admin/income_expense/expense_list.dart';
+import 'package:billcare/admin/income_expense/income_list.dart';
+import 'package:billcare/admin/payment/manage.dart';
+import 'package:billcare/admin/purchase/manage.dart';
+import 'package:billcare/admin/quick_receipt/manage.dart';
+import 'package:billcare/admin/receipt/manage.dart';
+import 'package:billcare/admin/report/due_report.dart';
+import 'package:billcare/admin/report/ledger.dart';
 import 'package:billcare/screens/login.dart';
+import 'package:billcare/admin/setup/session.dart';
 import 'package:billcare/transaction/transaction.dart';
 import 'package:flutter/material.dart';
-import 'package:billcare/home/dashboard_screen.dart';
-import 'package:billcare/items/itemspage.dart';
-import 'package:billcare/sale/manage.dart';
+// import 'package:billcare/home/dashboard_screen.dart';
+import 'package:billcare/admin/items/itemspage.dart';
+import 'package:billcare/admin/sale/manage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LeftSidebar extends StatelessWidget {
@@ -122,19 +134,37 @@ class LeftSidebar extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // 1. Dashboard
               _drawerItem(
                 Icons.home,
                 "Dashboard",
                 onTap: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => DashboardScreen()),
+                    MaterialPageRoute(builder: (_) => DashboardPage()),
                   );
                 },
               ),
-
+              // 1. Dashboard
+              // _drawerItem(
+              //   Icons.home,
+              //   "Dashboard",
+              //   onTap: () {
+              //     Navigator.pushReplacement(
+              //       context,
+              //       MaterialPageRoute(builder: (_) => DashboardScreen()),
+              //     );
+              //   },
+              // ),
+              // _drawerItem(
+              //   Icons.apartment,
+              //   'Company',
+              //   onTap: () {
+              //     Navigator.push(
+              //       context,
+              //       MaterialPageRoute(builder: (_) => CompanyListPage()),
+              //     );
+              //   },
+              // ),
               // 2. Clients
               _drawerItem(
                 Icons.person,
@@ -143,6 +173,16 @@ class LeftSidebar extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => ManageClientPage()),
+                  );
+                },
+              ),
+              _drawerItem(
+                Icons.group,
+                'Employee',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ManageEmployeePage()),
                   );
                 },
               ),
@@ -156,6 +196,67 @@ class LeftSidebar extends StatelessWidget {
                     MaterialPageRoute(builder: (_) => ItemScreen()),
                   );
                 },
+              ),
+              _drawerItem(
+                Icons.fact_check_outlined,
+                'Approve Sale',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ApproveSalePage()),
+                  );
+                },
+              ),
+              ExpansionTile(
+                leading: const Icon(Icons.settings),
+                title: const Text('Setup'),
+                tilePadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+                visualDensity: const VisualDensity(vertical: -4),
+                children: [
+                  _drawerItem(
+                    Icons.category,
+                    'Category',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => CategoryListPage()),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    Icons.event,
+                    'Session',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => SessionPage()),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    Icons.badge,
+                    'Designation',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => DesignationPage()),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    Icons.work,
+                    'Department',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => DepartmentPage()),
+                      );
+                    },
+                  ),
+                ],
               ),
 
               // 4. Sales
@@ -346,6 +447,47 @@ class LeftSidebar extends StatelessWidget {
                   ),
                 ],
               ),
+              ExpansionTile(
+                leading: const Icon(Icons.receipt_long), // better for Challan
+                title: const Text('Challan'),
+                tilePadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 0,
+                ),
+                visualDensity: const VisualDensity(vertical: -4),
+                children: [
+                  _drawerItem(
+                    Icons.download, // inward / receive
+                    'Challan In',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ChallanInListPage()),
+                      );
+                    },
+                  ),
+                  // _drawerItem(
+                  //   Icons.upload, // outward / send
+                  //   'Challan Out',
+                  //   onTap: () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(builder: (_) => SessionPage()),
+                  //     );
+                  //   },
+                  // ),
+                  // _drawerItem(
+                  //   Icons.bar_chart, // report / analytics
+                  //   'Challan Report',
+                  //   onTap: () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(builder: (_) => DesignationPage()),
+                  //     );
+                  //   },
+                  // ),
+                ],
+              ),
 
               // 11. Reports
               ExpansionTile(
@@ -367,7 +509,18 @@ class LeftSidebar extends StatelessWidget {
                       );
                     },
                   ),
-                  // _drawerItem(Icons.book, 'Day Book'),
+                  _drawerItem(
+                    Icons.assessment,
+                    'State-wise Report',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StateWiseReportPage(),
+                        ),
+                      );
+                    },
+                  ),
                   // _drawerItem(Icons.balance, 'Balance Sheet'),
                   // _drawerItem(Icons.assignment, 'Item Report'),
                   _drawerItem(
@@ -390,7 +543,29 @@ class LeftSidebar extends StatelessWidget {
                       );
                     },
                   ),
-                  _drawerItem(Icons.inventory_2, 'Item Stock'),
+
+                  _drawerItem(
+                    Icons.inventory_2,
+                    'Item Stock',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ItemStockReportPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  _drawerItem(
+                    Icons.warning_amber_rounded,
+                    'Low Stock',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => LowStockPage()),
+                      );
+                    },
+                  ),
                 ],
               ),
 
@@ -404,40 +579,52 @@ class LeftSidebar extends StatelessWidget {
                 ),
                 visualDensity: const VisualDensity(vertical: -4),
                 children: [
-                  _drawerItem(Icons.calendar_month, "Session"),
-                  _drawerItem(Icons.receipt, 'Sale Format'),
-                  _drawerItem(Icons.key, 'Password'),
+                  _drawerItem(
+                    Icons.key,
+                    'Password',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ChangePasswordPage()),
+                      );
+                    },
+                  ),
                 ],
               ),
 
-              // 13.Logout
-             // 13. Logout
-ListTile(
-  leading: const Icon(Icons.logout, color: Colors.red),
-  title: const Text(
-    'Logout',
-    style: TextStyle(color: Colors.red),
-  ),
-  onTap: () async {
+              // 13. Logout
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  // 🟡 1. Call Logout API
+                  final res = await ApiService.postRequest(
+                    endpoint: "/logout",
+                    body: {},
+                  );
 
-    // 🔐 1. Delete secure token
-    await AuthStorage.deleteToken();
+                  debugPrint("🚪 Logout API Response: $res");
 
-    // 🧾 2. Clear SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+                  // 🔐 2. Delete secure token
+                  await AuthStorage.deleteToken();
 
-    if (!context.mounted) return;
+                  // 🧾 3. Clear SharedPreferences
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
 
-    // 🔁 3. Go to Login & clear navigation stack
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
-  },
-),
+                  if (!context.mounted) return;
 
+                  // 🔁 4. Navigate to Login (clear stack)
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+                  );
+                },
+              ),
             ],
           ),
         ),

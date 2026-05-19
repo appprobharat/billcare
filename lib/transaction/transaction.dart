@@ -1,3 +1,4 @@
+import 'package:billcare/helper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -9,64 +10,106 @@ class TransactionPage extends StatefulWidget {
 }
 
 class _TransactionPageState extends State<TransactionPage> {
+  final TextEditingController fromDateController = TextEditingController();
+  final TextEditingController toDateController = TextEditingController();
+  DateTime normalize(DateTime d) => DateTime(d.year, d.month, d.day);
   String selectedUser = "User";
-  String selectedMonth = "This month";
+  String selectedMonth = "Month";
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
-  String selectedTransaction = "All Transactions";
-  String selectedParty = "All parties";
+  String selectedTransaction = "All";
+  String selectedParty = "All";
 
   List<Map<String, dynamic>> dummyTransactions = [
     {
       "party": "Official Expenses",
       "type": "Expense : 1",
-      "date": "20/11/2025",
+      "date": "20/04/2026",
       "total": "2000",
       "balance": "0",
     },
     {
       "party": "Vishal",
       "type": "PI : 1",
-      "date": "25/11/2025",
+      "date": "20/04/2026",
       "total": "10000",
       "balance": "10000",
     },
     {
       "party": "abcd",
       "type": "Sale : 2",
-      "date": "25/11/2025",
+      "date": "02/04/2026",
       "total": "1000",
       "balance": "1000",
     },
     {
       "party": "Ram",
       "type": "PayIn : 1",
-      "date": "25/11/2025",
+      "date": "20/04/2026",
       "total": "500",
       "balance": "500",
     },
     {
       "party": "xyh",
       "type": "Challan : 1",
-      "date": "25/11/2025",
+      "date": "20/04/2026",
       "total": "10000",
       "balance": "10000",
     },
     {
       "party": "azad",
       "type": "SO : 1",
-      "date": "25/11/2025",
+      "date": "21/05/2026",
       "total": "2000",
       "balance": "2000",
     },
     {
       "party": "Raaaj",
       "type": "CN : 1",
-      "date": "25/11/2025",
+      "date": "20/04/2026",
       "total": "20000",
       "balance": "20000",
     },
   ];
+  @override
+  void initState() {
+    super.initState();
+    fromDateController.text = DateFormat('dd-MM-yyyy').format(fromDate);
+    toDateController.text = DateFormat('dd-MM-yyyy').format(toDate);
+  }
+
+  List<Map<String, dynamic>> get filteredTransactions {
+    return dummyTransactions.where((t) {
+      DateTime tDate;
+
+      try {
+        tDate = DateFormat("dd/MM/yyyy").parse(t["date"]);
+      } catch (e) {
+        return false; // crash avoid
+      }
+
+      final from = normalize(fromDate);
+      final to = normalize(toDate);
+      final current = normalize(tDate);
+
+      if (current.isBefore(from) || current.isAfter(to)) {
+        return false;
+      }
+
+      if (selectedTransaction != "All" &&
+          !t["type"].toString().toLowerCase().contains(
+            selectedTransaction.toLowerCase(),
+          )) {
+        return false;
+      }
+
+      if (selectedParty != "All" && t["party"] != selectedParty) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+  }
 
   Future<void> pickFromDate() async {
     DateTime? picked = await showDatePicker(
@@ -108,161 +151,204 @@ class _TransactionPageState extends State<TransactionPage> {
         ],
       ),
 
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-
-            /// MONTH DROPDOWN + DATE PICKERS
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _dropdownTile("This month", [
-                    "Today",
-                    "Yesterday",
-                    "This month",
-                    "Last month",
-                  ], (val) => setState(() => selectedMonth = val!)),
-
-                  const SizedBox(height: 10),
-
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_month),
-                      const SizedBox(width: 8),
-
-                      Expanded(
-                        child: InkWell(
-                          onTap: pickFromDate,
-                          child: _dateBox(
-                            DateFormat("dd/MM/yyyy").format(fromDate),
-                          ),
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text("To"),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          onTap: pickToDate,
-                          child: _dateBox(
-                            DateFormat("dd/MM/yyyy").format(toDate),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 15),
-            Row(
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
               children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: _dropdownTile(
-                      selectedTransaction,
-                      [
-                        "All Transactions",
-                        "Sales",
-                        "PI",
-                        "Purchase",
-                        "Expense",
-                      ],
-                      (v) => setState(() => selectedTransaction = v!),
+                /// FIRST ROW (date + search)
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: _buildDateField("From", fromDateController),
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 3,
+                      child: _buildDateField("To", toDateController),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(flex: 1, child: _buildSearchButton()),
+                  ],
                 ),
 
-                const SizedBox(width: 12),
+                const SizedBox(height: 10),
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: OverlayDropdown(
+                            label: "",
+                            value: selectedTransaction,
+                            items: [
+                              "All",
+                              "Sales",
+                              "PI",
+                              "Purchase",
+                              "Expense",
+                            ],
+                            onSelect: (v) {
+                              setState(() => selectedTransaction = v);
+                            },
+                          ),
+                        ),
 
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: _dropdownTile(selectedParty, [
-                      "All parties",
-                      "Raaa",
-                      "Official Expenses",
-                    ], (v) => setState(() => selectedParty = v!)),
-                  ),
+                        const SizedBox(width: 6),
+
+                        Expanded(
+                          flex: 4,
+                          child: OverlayDropdown(
+                            label: "",
+                            value: selectedMonth,
+                            items: ["Today", "Yest", "Month", "Last"],
+                            onSelect: (val) {
+                              setState(() {
+                                selectedMonth = val;
+
+                                final now = DateTime.now();
+
+                                if (val == "Today") {
+                                  fromDate = now;
+                                  toDate = now;
+                                } else if (val == "Yest") {
+                                  final y = now.subtract(
+                                    const Duration(days: 1),
+                                  );
+                                  fromDate = y;
+                                  toDate = y;
+                                } else if (val == "Month") {
+                                  fromDate = DateTime(now.year, now.month, 1);
+                                  toDate = now;
+                                } else if (val == "Last") {
+                                  fromDate = DateTime(
+                                    now.year,
+                                    now.month - 1,
+                                    1,
+                                  );
+                                  toDate = DateTime(now.year, now.month, 0);
+                                }
+                              });
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        Expanded(
+                          flex: 3,
+                          child: OverlayDropdown(
+                            label: "",
+                            value: selectedParty,
+                            items: ["All", "Raaa", "Office"],
+                            onSelect: (v) {
+                              setState(() => selectedParty = v);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
+          ),
 
-            const SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-            /// --- LIST OF TRANSACTIONS ---
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: dummyTransactions.length,
-              itemBuilder: (context, index) {
-                final t = dummyTransactions[index];
+          /// --- LIST OF TRANSACTIONS ---
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: filteredTransactions.length,
 
-                return _transactionCard(
-                  party: t["party"],
-                  type: t["type"],
-                  date: t["date"],
-                  total: t["total"],
-                  balance: t["balance"],
-                );
-              },
-            ),
-          ],
+            itemBuilder: (context, index) {
+              final t = filteredTransactions[index];
+
+              return _transactionCard(
+                party: t["party"],
+                type: t["type"],
+                date: t["date"],
+                total: t["total"],
+                balance: t["balance"],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateField(String label, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      onTap: () async {
+        DateTime initialDate;
+
+        try {
+          initialDate = controller.text.isEmpty
+              ? DateTime.now()
+              : DateFormat('dd-MM-yyyy').parse(controller.text);
+        } catch (e) {
+          initialDate = DateTime.now();
+        }
+
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: initialDate,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+        );
+
+        if (picked != null) {
+          setState(() {
+            controller.text = DateFormat('dd-MM-yyyy').format(picked);
+
+            if (label == "From") {
+              fromDate = picked;
+            } else {
+              toDate = picked;
+            }
+          });
+        }
+      },
+      style: const TextStyle(fontSize: 12),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 12),
+        border: const OutlineInputBorder(),
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 10,
+          horizontal: 12,
         ),
       ),
     );
   }
 
-  /// ---------------- UI WIDGETS ----------------
+  Widget _buildSearchButton() {
+    return SizedBox(
+      width: 48,
+      height: 40,
+      child: ElevatedButton(
+        onPressed: () {
+          FocusScope.of(context).unfocus(); // keyboard close
+          setState(() {}); // refresh
+        },
 
-  Widget _dropdownTile(
-    String selectedValue,
-    List<String> items,
-    Function(String?) onChange,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade400),
-      ),
-      child: DropdownButton<String>(
-        value: selectedValue,
-        isExpanded: true,
-        underline: const SizedBox(),
-        style: const TextStyle(
-          fontSize: 13, // ← dropdown closed state font size
-          color: Colors.black,
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          minimumSize: const Size(48, 48),
         ),
-        items: items.map((e) {
-          return DropdownMenuItem(
-            value: e,
-            child: Text(
-              e,
-              style: const TextStyle(fontSize: 13), // ← dropdown list font size
-            ),
-          );
-        }).toList(),
-        onChanged: onChange,
+        child: const Icon(Icons.search, size: 20),
       ),
-    );
-  }
-
-  Widget _dateBox(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade400),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      alignment: Alignment.center,
-      child: Text(text),
     );
   }
 
@@ -273,54 +359,56 @@ class _TransactionPageState extends State<TransactionPage> {
     required String total,
     required String balance,
   }) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      elevation: 1,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            /// LEFT SIDE: PARTY + DATE
-            Column(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.pink.shade50,
+            child: Text(party[0]),
+          ),
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   party,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(date, style: TextStyle(color: Colors.grey.shade600)),
-              ],
-            ),
-
-            /// CENTER: TYPE
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [Text(type, style: const TextStyle(fontSize: 15))],
-            ),
-
-            /// RIGHT SIDE: TOTAL + BALANCE
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  "Total : ₹ $total",
-                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
                 ),
-                Text(
-                  "Balance: ₹ $balance",
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
+                Text(date, style: TextStyle(color: Colors.grey.shade600)),
+                Text(type, style: const TextStyle(fontSize: 13)),
               ],
             ),
-          ],
-        ),
+          ),
+
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                "₹ $total",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              Text(
+                "Bal: ₹ $balance",
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

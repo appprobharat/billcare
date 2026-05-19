@@ -1,7 +1,10 @@
+import 'package:billcare/SalesManFolder/salesman_dashboard.dart';
+import 'package:billcare/home/new_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/screens/login.dart';
-import 'package:billcare/home/dashboard_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:billcare/Usersfolder/user_Dashboard.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,25 +20,62 @@ class _SplashScreenState extends State<SplashScreen> {
     _boot();
   }
 
-  Future<void> _boot() async {
-    // ⏳ Small delay for smooth UX
-    await Future.delayed(const Duration(seconds: 1));
+ Future<void> _boot() async {
+  await Future.delayed(const Duration(seconds: 1));
 
-    // 🔑 SINGLE SOURCE OF TRUTH
-    final token = await AuthStorage.getToken();
+  final token = await AuthStorage.getToken();
+  final prefs = await SharedPreferences.getInstance();
 
-    if (!mounted) return;
+  final userType = prefs.getString("userType");
 
+  print("TOKEN: $token");
+  print("USERTYPE: $userType");
+
+  if (!mounted) return;
+
+  /// ✅ LOGGED IN
+  if (token != null && token.isNotEmpty) {
+    if (userType == "admin") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const DashboardPage(),
+        ),
+      );
+    } else if (userType == "sales") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const SalesDashboard(),
+        ),
+      );
+    } else if (userType == "client") {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const UserDashboard(),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LoginPage(),
+        ),
+      );
+    }
+  }
+
+  /// ❌ NOT LOGGED IN
+  else {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => (token != null && token.isNotEmpty)
-            ? const DashboardScreen()
-            : const LoginPage(),
+        builder: (_) => const LoginPage(),
       ),
     );
   }
-
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

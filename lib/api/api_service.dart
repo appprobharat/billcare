@@ -3,11 +3,58 @@ import 'dart:io';
 import 'package:billcare/api/auth_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:billcare/clients/model.dart';
+import 'package:billcare/admin/clients/model.dart';
 import 'package:path_provider/path_provider.dart';
+
+class AppColors {
+  static const primary = Color(0xFF1E3A8A);
+}
 
 class ApiService {
   static const String baseUrl = "https://gst.billcare.in/api";
+  static Future<dynamic> postRequest({
+    required String endpoint,
+    Map<String, dynamic>? body,
+    bool isJson = false,
+  }) async {
+    try {
+      final url = Uri.parse(baseUrl + endpoint);
+
+      final headers = await authHeaders(
+        contentType: isJson
+            ? 'application/json'
+            : 'application/x-www-form-urlencoded',
+      );
+
+      /// 🔥 DEBUG PRINT (IMPORTANT)
+      debugPrint("🌐 API URL: $url");
+      debugPrint("📤 BODY: $body");
+      debugPrint("🔑 HEADERS: $headers");
+
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: isJson ? jsonEncode(body ?? {}) : body ?? {},
+      );
+
+      /// 🔥 RESPONSE DEBUG
+      debugPrint("📥 STATUS: ${response.statusCode}");
+      debugPrint("📥 RESPONSE: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        await AuthStorage.logout(); // 🔐 token expire
+        return null;
+      } else {
+        debugPrint("❌ API ERROR ${response.statusCode}");
+        return null;
+      }
+    } catch (e) {
+      debugPrint("❌ EXCEPTION: $e");
+      return null;
+    }
+  }
 
   static Future<Map<String, String>> authHeaders({String? contentType}) async {
     final token = await AuthStorage.getToken();
@@ -16,6 +63,49 @@ class ApiService {
       'Accept': 'application/json',
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
+  }
+
+  static Future<dynamic> multipartRequest({
+    required String endpoint,
+    required Map<String, dynamic> fields,
+    File? file,
+    fileField = "Photo",
+  }) async {
+    try {
+      final url = Uri.parse(baseUrl + endpoint);
+
+      final headers = await authHeaders();
+
+      var request = http.MultipartRequest("POST", url);
+
+      request.headers.addAll(headers);
+
+      request.fields.addAll(fields.map((k, v) => MapEntry(k, v.toString())));
+
+      if (file != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(fileField, file.path),
+        );
+      }
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      print("📤 MULTIPART BODY: $fields");
+      print("📥 RESPONSE: $responseBody");
+
+      if (response.statusCode == 200) {
+        return jsonDecode(responseBody);
+      } else if (response.statusCode == 401) {
+        await AuthStorage.logout();
+        return null;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print("❌ MULTIPART ERROR: $e");
+      return null;
+    }
   }
 
   static Future<Map<String, dynamic>> login(
@@ -29,15 +119,25 @@ class ApiService {
           .post(
             url,
             headers: const {
-              'Content-Type': 'application/json',
               'Accept': 'application/json',
+              // ❌ Content-Type hata diya
             },
-            body: json.encode({"username": username, "password": password}),
+            body: {"username": username, "password": password},
           )
           .timeout(const Duration(seconds: 15));
 
+      debugPrint("STATUS CODE: ${res.statusCode}");
+      debugPrint("BODY: ${res.body}");
+
       if (res.statusCode == 200 || res.statusCode == 201) {
-        return json.decode(res.body);
+        final data = json.decode(res.body);
+
+        // ✅ extra safety check
+        if (data is Map<String, dynamic>) {
+          return data;
+        } else {
+          return {"status": false, "message": "Invalid response format"};
+        }
       } else {
         return {"status": false, "message": "Login failed (${res.statusCode})"};
       }
@@ -197,6 +297,36 @@ class ApiService {
     }
   }
 
+  static Future<bool> updateItem(Map<String, dynamic> data, File? image) async {
+    try {
+      var request = http.MultipartRequest(
+        "POST",
+        Uri.parse("${ApiService.baseUrl}/item/update"),
+      );
+
+      request.fields.addAll(
+        data.map((key, value) => MapEntry(key, value.toString())),
+      );
+
+      if (image != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath("Image", image.path),
+        );
+      }
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print("Update Item Error: $e");
+      return false;
+    }
+  }
+
   static Future<Map<String, dynamic>?> fetchSaleForEdit(int saleId) async {
     final url = Uri.parse("$baseUrl/sale/edit");
 
@@ -225,27 +355,27 @@ class ApiService {
     }
   }
 
- static Future<Map<String, dynamic>?> fetchPurchaseForEdit(
-  int purchaseId,
-) async {
-  final url = Uri.parse("$baseUrl/purchase/edit");
+  static Future<Map<String, dynamic>?> fetchPurchaseForEdit(
+    int purchaseId,
+  ) async {
+    final url = Uri.parse("$baseUrl/purchase/edit");
 
-  final res = await http.post(
-    url,
-    headers: await authHeaders(), // 🔥 token inside
-    body: jsonEncode({"PurchaseId": purchaseId}),
-  );
+    final res = await http.post(
+      url,
+      headers: await authHeaders(), // 🔥 token inside
+      body: jsonEncode({"PurchaseId": purchaseId}),
+    );
 
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    }
+
+    if (res.statusCode == 401) {
+      await AuthStorage.logout();
+    }
+
+    throw Exception("Failed to fetch purchase");
   }
-
-  if (res.statusCode == 401) {
-    await AuthStorage.logout();
-  }
-
-  throw Exception("Failed to fetch purchase");
-}
 
   static Future<Map<String, dynamic>?> fetchSaleDetails(int saleId) async {
     final url = Uri.parse('$baseUrl/sale/edit');
@@ -710,7 +840,7 @@ class ApiService {
   }) async {
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('https://gst.billcare.in/api/item/update'),
+      Uri.parse('${ApiService.baseUrl}/item/update'),
     );
 
     try {
@@ -871,97 +1001,96 @@ class ApiService {
       return false;
     }
   }
-static Future<Map<String, dynamic>?> fetchItemForEdit(int itemId) async {
-  final url = Uri.parse("$baseUrl/item/edit");
 
-  try {
-    final response = await http.post(
-      url,
-      headers: await authHeaders(contentType: 'application/json'),
-      body: jsonEncode({"ItemId": itemId}),
-    );
+  static Future<Map<String, dynamic>?> fetchItemForEdit(String itemId) async {
+    final url = Uri.parse("$baseUrl/item/edit");
 
-    debugPrint("📡 Item Edit Status: ${response.statusCode}");
-    debugPrint("📡 Item Edit Body: ${response.body}");
+    try {
+      final response = await http.post(
+        url,
+        headers: await authHeaders(contentType: 'application/json'),
+        body: jsonEncode({"ItemId": itemId}),
+      );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
-    }
+      debugPrint("📡 Item Edit Status: ${response.statusCode}");
+      debugPrint("📡 Item Edit Body: ${response.body}");
 
-    if (response.statusCode == 401) {
-      // 🔐 token expired
-      await AuthStorage.logout();
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+
+      if (response.statusCode == 401) {
+        // 🔐 token expired
+        await AuthStorage.logout();
+        return null;
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint("❌ fetchItemForEdit error: $e");
       return null;
     }
-
-    return null;
-  } catch (e) {
-    debugPrint("❌ fetchItemForEdit error: $e");
-    return null;
   }
-}
-static Future<bool> storeIncomeExpenseItem(
-  Map<String, dynamic> data,
-) async {
-  final url = Uri.parse("$baseUrl/inc_exp/item/store");
 
-  try {
-    final response = await http.post(
-      url,
-      headers: await authHeaders(
-        contentType: 'application/x-www-form-urlencoded',
-      ),
-      body: data.map((k, v) => MapEntry(k, v.toString())),
-    );
+  static Future<bool> storeIncomeExpenseItem(Map<String, dynamic> data) async {
+    final url = Uri.parse("$baseUrl/inc_exp/item/store");
 
-    debugPrint("🟢 Inc/Exp Store Status: ${response.statusCode}");
-    debugPrint("🟢 Inc/Exp Store Body: ${response.body}");
+    try {
+      final response = await http.post(
+        url,
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
+        body: data.map((k, v) => MapEntry(k, v.toString())),
+      );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return true;
+      debugPrint("🟢 Inc/Exp Store Status: ${response.statusCode}");
+      debugPrint("🟢 Inc/Exp Store Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.logout();
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint("❌ storeIncomeExpenseItem error: $e");
+      return false;
     }
-
-    if (response.statusCode == 401) {
-      await AuthStorage.logout();
-    }
-
-    return false;
-  } catch (e) {
-    debugPrint("❌ storeIncomeExpenseItem error: $e");
-    return false;
   }
-}
-static Future<bool> updateIncomeExpenseItem(
-  Map<String, dynamic> data,
-) async {
-  final url = Uri.parse("$baseUrl/inc_exp/item/update");
 
-  try {
-    final response = await http.post(
-      url,
-      headers: await authHeaders(
-        contentType: 'application/x-www-form-urlencoded',
-      ),
-      body: data.map((k, v) => MapEntry(k, v.toString())),
-    );
+  static Future<bool> updateIncomeExpenseItem(Map<String, dynamic> data) async {
+    final url = Uri.parse("$baseUrl/inc_exp/item/update");
 
-    debugPrint("🟢 Inc/Exp Update Status: ${response.statusCode}");
-    debugPrint("🟢 Inc/Exp Update Body: ${response.body}");
+    try {
+      final response = await http.post(
+        url,
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
+        body: data.map((k, v) => MapEntry(k, v.toString())),
+      );
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return true;
+      debugPrint("🟢 Inc/Exp Update Status: ${response.statusCode}");
+      debugPrint("🟢 Inc/Exp Update Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.logout();
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint("❌ updateIncomeExpenseItem error: $e");
+      return false;
     }
-
-    if (response.statusCode == 401) {
-      await AuthStorage.logout();
-    }
-
-    return false;
-  } catch (e) {
-    debugPrint("❌ updateIncomeExpenseItem error: $e");
-    return false;
   }
-}
 
   static Future<Map<String, dynamic>?> postPurchaseData(
     Map<String, dynamic> data,
@@ -1336,42 +1465,37 @@ static Future<bool> updateIncomeExpenseItem(
       return null;
     }
   }
+
   static Future<bool> storeIncomeExpenseCategory({
-  required String type,
-  required String category,
-}) async {
-  final url = Uri.parse(
-    "$baseUrl/inc_exp/category/store",
-  );
+    required String type,
+    required String category,
+  }) async {
+    final url = Uri.parse("$baseUrl/inc_exp/category/store");
 
-  try {
-    final response = await http.post(
-      url,
-      headers: await authHeaders(
-        contentType: 'application/x-www-form-urlencoded',
-      ),
-      body: {
-        "Type": type,
-        "Category": category,
-      },
-    );
+    try {
+      final response = await http.post(
+        url,
+        headers: await authHeaders(
+          contentType: 'application/x-www-form-urlencoded',
+        ),
+        body: {"Type": type, "Category": category},
+      );
 
-    debugPrint("🟢 Category Store Status: ${response.statusCode}");
-    debugPrint("🟢 Category Store Body: ${response.body}");
+      debugPrint("🟢 Category Store Status: ${response.statusCode}");
+      debugPrint("🟢 Category Store Body: ${response.body}");
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      return true;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.logout();
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint("❌ storeIncomeExpenseCategory error: $e");
+      return false;
     }
-
-    if (response.statusCode == 401) {
-      await AuthStorage.logout();
-    }
-
-    return false;
-  } catch (e) {
-    debugPrint("❌ storeIncomeExpenseCategory error: $e");
-    return false;
   }
-}
-
 }

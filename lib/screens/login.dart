@@ -1,6 +1,8 @@
+import 'package:billcare/SalesManFolder/salesman_dashboard.dart';
+import 'package:billcare/Usersfolder/user_Dashboard.dart';
 import 'package:billcare/api/api_service.dart';
-import 'package:billcare/home/dashboard_screen.dart';
 import 'package:billcare/api/auth_helper.dart';
+import 'package:billcare/home/new_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     if (_isLoading) return;
+
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -37,47 +40,63 @@ class _LoginPageState extends State<LoginPage> {
 
       if (loginRes['status'] == true) {
         final token = loginRes['token']?.toString() ?? '';
+
         if (token.isEmpty) {
-          _showSnackBar("Login failed: token missing");
-          if (mounted) setState(() => _isLoading = false);
+          _showSnackBar("Token missing");
           return;
         }
 
-        final profile = (loginRes['profile'] is Map<String, dynamic>)
-            ? loginRes['profile']
-            : {};
+        final profile = loginRes['profile'] ?? {};
 
+        // ✅ TOKEN SAVE
         await AuthStorage.saveToken(token);
 
+        // ✅ SHARED PREF SAVE
         final prefs = await SharedPreferences.getInstance();
+
+        await prefs.setString("token", token);
         await prefs.setString("username", username);
-        await prefs.setString("userType", loginRes['type']?.toString() ?? '');
-        await prefs.setString("userName", profile['name']?.toString() ?? '');
-        await prefs.setString(
-          "companyName",
-          profile['company']?.toString() ?? '',
-        );
-        await prefs.setString(
-          "userPhotoUrl",
-          profile['photo']?.toString() ?? '',
-        );
+        await prefs.setString("userType", loginRes['type'] ?? '');
+        await prefs.setString("userName", profile['name'] ?? '');
+        await prefs.setString("companyName", profile['company'] ?? '');
+        await prefs.setString("userPhotoUrl", profile['photo'] ?? '');
+
+        debugPrint("✅ Saved Name: ${profile['name']}");
+        debugPrint("✅ Saved Company: ${profile['company']}");
+        debugPrint("✅ Saved Photo: ${profile['photo']}");
 
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
+
+        final userType = loginRes['type']?.toString().toLowerCase() ?? '';
+
+        await prefs.setString("userType", userType);
+
+        if (!mounted) return;
+
+        if (userType == "client") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const UserDashboard()),
+          );
+        } else if (userType == "sales") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const SalesDashboard()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DashboardPage()),
+          );
+        }
       } else {
-        _showSnackBar(loginRes['message']?.toString() ?? "Login failed");
+        _showSnackBar(loginRes['message'] ?? "Login failed");
       }
-    } catch (e, s) {
-      debugPrint("LOGIN ERROR: $e");
-      debugPrint("STACKTRACE: $s");
-      _showSnackBar("Login error occurred");
+    } catch (e) {
+      debugPrint("ERROR: $e");
+      _showSnackBar("Login error");
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
