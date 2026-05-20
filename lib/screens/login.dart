@@ -20,7 +20,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-
+  String? _errorMessage;
   Future<void> _login() async {
     if (_isLoading) return;
 
@@ -28,11 +28,15 @@ class _LoginPageState extends State<LoginPage> {
     final password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      _showSnackBar("Please enter username and password");
+      setState(() {
+        _errorMessage = "Please enter username and password";
+      });
       return;
     }
-
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final loginRes = await ApiService.login(username, password);
@@ -90,13 +94,22 @@ class _LoginPageState extends State<LoginPage> {
           );
         }
       } else {
-        _showSnackBar(loginRes['message'] ?? "Login failed");
+        setState(() {
+          _errorMessage = loginRes['message'] ?? "Invalid username or password";
+        });
       }
     } catch (e) {
       debugPrint("ERROR: $e");
-      _showSnackBar("Login error");
+
+      setState(() {
+        _errorMessage = "Invalid username or password";
+      });
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -218,7 +231,18 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                 ),
               ),
-
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 30),
 
               Wrap(

@@ -118,10 +118,7 @@ class ApiService {
       final res = await http
           .post(
             url,
-            headers: const {
-              'Accept': 'application/json',
-              // ❌ Content-Type hata diya
-            },
+            headers: const {'Accept': 'application/json'},
             body: {"username": username, "password": password},
           )
           .timeout(const Duration(seconds: 15));
@@ -129,20 +126,17 @@ class ApiService {
       debugPrint("STATUS CODE: ${res.statusCode}");
       debugPrint("BODY: ${res.body}");
 
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final data = json.decode(res.body);
+      final data = json.decode(res.body);
 
-        // ✅ extra safety check
-        if (data is Map<String, dynamic>) {
-          return data;
-        } else {
-          return {"status": false, "message": "Invalid response format"};
-        }
-      } else {
-        return {"status": false, "message": "Login failed (${res.statusCode})"};
-      }
+      return {
+        "status": data["status"] ?? false,
+        "message": data["message"] ?? "Login failed",
+        "token": data["token"],
+        "profile": data["profile"],
+        "type": data["type"],
+      };
     } catch (e) {
-      return {"status": false, "message": "Network error: $e"};
+      return {"status": false, "message": "Network error"};
     }
   }
 

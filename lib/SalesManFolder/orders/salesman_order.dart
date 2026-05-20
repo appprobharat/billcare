@@ -216,8 +216,7 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
         "ClientId":
             allClients
                 .firstWhere(
-                  (e) => e["Name"].toString() == selectedClient,
-                  orElse: () => {},
+                  (e) => selectedClient!.startsWith(e["Name"].toString()),
                 )["id"]
                 ?.toString() ??
             "",
@@ -466,10 +465,17 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
               child: OverlayDropdown(
                 label: "",
                 value: selectedClient,
-                items: allClients.map((e) => e["Name"].toString()).toList(),
+                items: allClients.map((e) {
+                  final name = e["Name"] ?? "";
+                  final phone = e["ContactNo"] ?? "";
+                  final state = e["State"] ?? "";
+                  final type = e["Type"] ?? "";
+
+                  return "$name | $phone | $state ($type)";
+                }).toList(),
                 onSelect: (value) {
                   setState(() {
-                    selectedClient = value;
+                    selectedClient = value.split("|").first.trim();
                   });
                 },
               ),

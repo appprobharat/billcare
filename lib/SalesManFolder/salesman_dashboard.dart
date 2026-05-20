@@ -1,12 +1,12 @@
-import 'package:billcare/SalesManFolder/SalesmanPayPage.dart';
+import 'package:billcare/SalesManFolder/SalesManAddReceipt.dart';
 import 'package:billcare/SalesManFolder/bills/salesman_bills.dart';
 import 'package:billcare/SalesManFolder/due/salesman_due.dart';
 import 'package:billcare/SalesManFolder/notification/salesman_notification.dart';
 import 'package:billcare/SalesManFolder/orders/salesman_order.dart';
 import 'package:billcare/SalesManFolder/orders/salesman_order_history.dart';
-import 'package:billcare/SalesManFolder/payment/salesman_payment_history.dart';
 import 'package:billcare/SalesManFolder/profile/salesman_profile.dart';
 import 'package:billcare/SalesManFolder/salesman_sidebar.dart';
+import 'package:billcare/admin/receipt/manage.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,7 +38,6 @@ class _SalesDashboardState extends State<SalesDashboard> {
     loadUserData();
   }
 
-  
   Future<void> loadUserData() async {
     /// 🔥 START LOADING
     setState(() {
@@ -189,21 +188,19 @@ class _SalesDashboardState extends State<SalesDashboard> {
                 children: [
                   Expanded(
                     child: _modernCard(
-                      title: "Outstanding",
+                      title: "Client Dues",
                       value: "₹ ${outstanding.toStringAsFixed(0)}",
                       color: Colors.red,
-                      subtitle: "Pending",
+
                       icon: Icons.account_balance_wallet,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _modernCard(
-                      title: "Last Payment",
+                      title: "Today Received",
                       value: isSuccess ? "₹$lastAmount" : "No Payment",
-                      subtitle: lastDate.isNotEmpty
-                          ? lastDate
-                          : "No recent payment",
+
                       color: isSuccess ? Colors.green : Colors.red,
                       icon: isSuccess ? Icons.check_circle : Icons.cancel,
                     ),
@@ -250,13 +247,13 @@ class _SalesDashboardState extends State<SalesDashboard> {
                       Expanded(
                         child: _actionCard(
                           Icons.payment,
-                          "Pay",
+                          "Receipt",
                           Colors.green,
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const SalesPayPage(),
+                                builder: (_) => const SalesManAddReceipt(),
                               ),
                             );
                           },
@@ -299,12 +296,11 @@ class _SalesDashboardState extends State<SalesDashboard> {
 
                   const SizedBox(height: 25),
 
-                  // 🔹 HISTORY
-                  _bigTile("Payment History", Icons.payment, () {
+                  _bigTile("Receipt History", Icons.payment, () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const SalesPaymentHistoryPage(),
+                        builder: (_) => const ManageReceiptPage(),
                       ),
                     );
                   }),
@@ -356,9 +352,14 @@ class _SalesDashboardState extends State<SalesDashboard> {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const Text(
-                                  "Premium User",
-                                  style: TextStyle(color: Colors.grey),
+                                Text(
+                                  companyName,
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 13,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -382,7 +383,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
     final pages = [
       _homePage(),
       const SalesOrderHistoryPage(),
-      const SalesPaymentHistoryPage(),
+      const ManageReceiptPage(),
       const SalesProfilePage(),
     ];
     return Scaffold(
@@ -414,7 +415,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
+          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Receipts"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
@@ -424,12 +425,12 @@ class _SalesDashboardState extends State<SalesDashboard> {
   Widget _modernCard({
     required String title,
     required String value,
-    String? subtitle,
+
     required Color color,
     required IconData icon,
   }) {
     return Container(
-      height: 120, // 🔥 fixed height → sab cards same size
+      height: 110,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.95),
@@ -462,21 +463,13 @@ class _SalesDashboardState extends State<SalesDashboard> {
               child: Text(
                 value,
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
             ),
           ),
-
-          if (subtitle != null)
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
-            ),
         ],
       ),
     );
