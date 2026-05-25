@@ -4,36 +4,21 @@ import 'package:flutter/material.dart';
 class IncomeExpenseChart extends StatelessWidget {
   final List<double> incomeData;
   final List<double> expenseData;
+  final List<String> months;
 
   const IncomeExpenseChart({
     super.key,
     required this.incomeData,
     required this.expenseData,
+    required this.months,
   });
 
   @override
   Widget build(BuildContext context) {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.all(10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -42,10 +27,7 @@ class IncomeExpenseChart extends StatelessWidget {
             /// 🔥 TITLE
             const Text(
               "Income & Expense Graph",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 10),
@@ -67,62 +49,86 @@ class IncomeExpenseChart extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            /// 🔥 BAR GRAPH
             AspectRatio(
               aspectRatio: 1.6,
+
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
 
                   maxY: _getMaxY(),
 
+                  groupsSpace: 12,
+
                   gridData: FlGridData(
                     show: true,
+
                     drawVerticalLine: false,
-                    horizontalInterval: 500,
+
+                    horizontalInterval: _getMaxY() / 5,
                   ),
 
                   borderData: FlBorderData(show: false),
 
-                  /// 🔥 AXIS TITLES
+                  /// 🔥 AXIS
                   titlesData: FlTitlesData(
+                    /// TOP
                     topTitles: AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
 
+                    /// RIGHT
                     rightTitles: AxisTitles(
                       sideTitles: SideTitles(showTitles: false),
                     ),
 
-                    /// Y AXIS
+                    /// LEFT
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 38,
-                        interval: 500,
+
+                        reservedSize: 42,
+
+                        interval: _getMaxY() / 5,
 
                         getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 10),
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+
+                            child: Text(
+                              _formatAmount(value),
+
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.black54,
+                              ),
+                            ),
                           );
                         },
                       ),
                     ),
 
-                    /// X AXIS
+                    /// BOTTOM
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
 
+                        reservedSize: 32,
+
                         getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= 0 &&
-                              value.toInt() < months.length) {
+                          int index = value.toInt();
+
+                          if (index >= 0 && index < months.length) {
                             return Padding(
-                              padding: const EdgeInsets.only(top: 6),
+                              padding: const EdgeInsets.only(top: 8),
+
                               child: Text(
-                                months[value.toInt()],
-                                style: const TextStyle(fontSize: 10),
+                                months[index],
+
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             );
                           }
@@ -136,24 +142,32 @@ class IncomeExpenseChart extends StatelessWidget {
                   /// 🔥 BARS
                   barGroups: List.generate(
                     incomeData.length,
+
                     (i) => BarChartGroupData(
                       x: i,
+
                       barsSpace: 4,
 
                       barRods: [
                         /// INCOME
                         BarChartRodData(
-                          toY: incomeData[i],
-                          width: 8,
+                          toY: incomeData[i].abs(),
+
+                          width: 7,
+
                           color: Colors.green,
+
                           borderRadius: BorderRadius.circular(4),
                         ),
 
                         /// EXPENSE
                         BarChartRodData(
-                          toY: expenseData[i],
-                          width: 8,
+                          toY: expenseData[i].abs(),
+
+                          width: 7,
+
                           color: Colors.red,
+
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ],
@@ -170,16 +184,23 @@ class IncomeExpenseChart extends StatelessWidget {
 
   double _getMaxY() {
     double maxIncome = incomeData.isNotEmpty
-        ? incomeData.reduce((a, b) => a > b ? a : b)
+        ? incomeData.map((e) => e.abs()).reduce((a, b) => a > b ? a : b)
         : 0;
 
     double maxExpense = expenseData.isNotEmpty
-        ? expenseData.reduce((a, b) => a > b ? a : b)
+        ? expenseData.map((e) => e.abs()).reduce((a, b) => a > b ? a : b)
         : 0;
 
-    double maxValue =
-        maxIncome > maxExpense ? maxIncome : maxExpense;
+    double maxValue = maxIncome > maxExpense ? maxIncome : maxExpense;
 
-    return ((maxValue / 500).ceil() * 500).toDouble();
+    return maxValue + (maxValue * 0.2);
+  }
+
+  String _formatAmount(double value) {
+    if (value >= 1000) {
+      return "${(value / 1000).toStringAsFixed(0)}k";
+    }
+
+    return value.toInt().toString();
   }
 }

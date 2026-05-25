@@ -1,3 +1,4 @@
+import 'package:billcare/Usersfolder/bills/user_bills_details.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
 
@@ -25,7 +26,6 @@ class _UserBillPageState extends State<UserBillPage> {
     });
 
     final response = await ApiService.postRequest(endpoint: "/client/bills");
-
 
     if (response != null) {
       if (response is List) {
@@ -60,82 +60,157 @@ class _UserBillPageState extends State<UserBillPage> {
   }
 
   Widget _billCard(BuildContext context, Map<String, dynamic> bill) {
-    final isPaid = bill["status"] == "paid";
-
     return GestureDetector(
-      onTap: () {
-        // 👉 future: open bill details page
-      },
+      onTap: () {},
+
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 8),
+
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+
         decoration: BoxDecoration(
           color: Colors.white,
+
           borderRadius: BorderRadius.circular(14),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
         ),
+
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔹 STATUS ICON
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isPaid
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                isPaid ? Icons.check_circle : Icons.pending,
-                color: isPaid ? Colors.green : Colors.red,
-              ),
-            ),
-
-            const SizedBox(width: 12),
-
-            // 🔹 BILL DETAILS
+            /// 🔹 DETAILS
             Expanded(
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Invoice: ${bill["invoice_no"]}",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                  /// 🔹 ICON
+                  Container(
+                    padding: const EdgeInsets.all(8),
+
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.12),
+
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+
+                    child: const Icon(
+                      Icons.receipt_long,
+                      color: Colors.orange,
+                      size: 18,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Date: ${bill["date"]}",
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    "₹${(double.tryParse(bill["amount"].toString()) ?? 0).toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+
+                  const SizedBox(width: 10),
+
+                  /// 🔹 DETAILS
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        /// 🔥 FIRST ROW
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                bill["client_name"]?.toString() ?? "",
+
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            Text(
+                              "INV ${bill["invoice_no"]}",
+
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue,
+                              ),
+                            ),
+
+                            const SizedBox(width: 6),
+
+                            Text(
+                              bill["date"]?.toString() ?? "",
+
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        /// 🔥 SECOND ROW
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.call_outlined,
+                              size: 12,
+                              color: Colors.grey.shade600,
+                            ),
+
+                            const SizedBox(width: 4),
+
+                            Expanded(
+                              child: Text(
+                                bill["contact_no"]?.toString() ?? "",
+
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+
+                            Text(
+                              "₹${bill["amount"] ?? "0"}",
+
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
+                  ),
+
+                  /// 🔥 ARROW
+                  const SizedBox(width: 8),
+
+                  IconButton(
+                    icon: Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => UserBillDetailsPage(
+                            saleId: int.parse(bill["sale_id"].toString()),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
-            ),
-
-            // 🔹 STATUS TEXT
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  isPaid ? "PAID" : "PENDING",
-                  style: TextStyle(
-                    color: isPaid ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Icon(Icons.arrow_forward_ios, size: 14),
-              ],
             ),
           ],
         ),

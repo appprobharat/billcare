@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:billcare/api/api_service.dart';
 import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/admin/receipt/add.dart';
@@ -53,6 +54,47 @@ class _ManageReceiptPageState extends State<ManageReceiptPage> {
     }
 
     return token;
+  }
+
+  Future<void> _downloadAndOpenFile(String url) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Downloading attachment...")),
+      );
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        // ✅ Download folder
+        Directory dir = Directory('/storage/emulated/0/Download');
+
+        // ✅ create if not exists
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+
+        final fileName =
+            "receipt_${DateTime.now().millisecondsSinceEpoch}_${url.split('/').last}";
+
+        final file = File('${dir.path}/$fileName');
+
+        await file.writeAsBytes(response.bodyBytes);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Downloaded to Download folder")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to download file")),
+        );
+      }
+    } catch (e) {
+      debugPrint("DOWNLOAD ERROR: $e");
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
   }
 
   Future<void> _fetchReceipts() async {
@@ -632,7 +674,7 @@ class _ManageReceiptPageState extends State<ManageReceiptPage> {
                                                   fontSize: 16,
                                                 ),
                                               ),
-                                            
+
                                               if (receipt["Discount"] != null &&
                                                   receipt["Discount"]
                                                           .toString() !=
@@ -644,6 +686,24 @@ class _ManageReceiptPageState extends State<ManageReceiptPage> {
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w600,
                                                   ),
+                                                ),
+                                              if (receipt["Attachment"] !=
+                                                      null &&
+                                                  receipt["Attachment"]
+                                                      .toString()
+                                                      .isNotEmpty)
+                                                IconButton(
+                                                  icon: const Icon(
+                                                    Icons.download,
+                                                    color: AppColors.primary,
+                                                    size: 20,
+                                                  ),
+                                                  onPressed: () async {
+                                                    await _downloadAndOpenFile(
+                                                      receipt["Attachment"]
+                                                          .toString(),
+                                                    );
+                                                  },
                                                 ),
                                             ],
                                           ),

@@ -4,145 +4,185 @@ import 'package:flutter/material.dart';
 class SalesPurchaseChart extends StatelessWidget {
   final List<double> salesData;
   final List<double> purchaseData;
+  final List<String> months;
 
   const SalesPurchaseChart({
     super.key,
     required this.salesData,
     required this.purchaseData,
+    required this.months,
   });
 
   @override
   Widget build(BuildContext context) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /// TITLE
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text(
-            "Sales & Purchase Graph",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// TITLE
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "Sales & Purchase Graph",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
-        ),
 
-        /// LEGEND
-        Padding(
-          padding: const EdgeInsets.only(left: 12, bottom: 10),
-          child: Row(
-            children: const [
-              Icon(Icons.circle, color: Colors.green, size: 10),
-              SizedBox(width: 4),
-              Text("Sales"),
-              SizedBox(width: 16),
-              Icon(Icons.circle, color: Colors.red, size: 10),
-              SizedBox(width: 4),
-              Text("Purchase"),
-            ],
+          /// LEGEND
+          Padding(
+            padding: const EdgeInsets.only(left: 12, bottom: 10),
+            child: Row(
+              children: const [
+                Icon(Icons.circle, color: Colors.green, size: 10),
+                SizedBox(width: 4),
+                Text("Sales"),
+                SizedBox(width: 16),
+                Icon(Icons.circle, color: Colors.red, size: 10),
+                SizedBox(width: 4),
+                Text("Purchase"),
+              ],
+            ),
           ),
-        ),
 
-        /// BAR CHART
-        AspectRatio(
-          aspectRatio: 1.6,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: _getMaxY(),
+          /// BAR CHART
+          AspectRatio(
+            aspectRatio: 1.6,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
 
-                gridData: FlGridData(show: true, drawVerticalLine: false),
+                  maxY: _getMaxY(),
 
-                borderData: FlBorderData(show: false),
+                  groupsSpace: 12,
 
-                titlesData: FlTitlesData(
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: _getMaxY() / 5,
                   ),
 
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  borderData: FlBorderData(show: false),
 
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 36,
-                      interval: 500,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          value.toInt().toString(),
-                          style: const TextStyle(fontSize: 12),
-                        );
-                      },
+                  titlesData: FlTitlesData(
+                    /// TOP
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
                     ),
-                  ),
 
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 &&
-                            value.toInt() < months.length) {
+                    /// RIGHT
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+
+                    /// LEFT
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+
+                        reservedSize: 42,
+
+                        interval: _getMaxY() / 5,
+
+                        getTitlesWidget: (value, meta) {
                           return Padding(
-                            padding: const EdgeInsets.only(top: 6),
+                            padding: const EdgeInsets.only(right: 6),
+
                             child: Text(
-                              months[value.toInt()],
-                              style: const TextStyle(fontSize: 11),
+                              _formatAmount(value),
+
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.black54,
+                              ),
                             ),
                           );
-                        }
-                        return const SizedBox();
-                      },
+                        },
+                      ),
+                    ),
+
+                    /// BOTTOM
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+
+                        reservedSize: 32,
+
+                        getTitlesWidget: (value, meta) {
+                          int index = value.toInt();
+
+                          if (index >= 0 && index < months.length) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+
+                              child: Text(
+                                months[index],
+
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          }
+
+                          return const SizedBox();
+                        },
+                      ),
                     ),
                   ),
-                ),
 
-                barGroups: List.generate(
-                  salesData.length,
-                  (i) => BarChartGroupData(
-                    x: i,
-                    barsSpace: 4,
-                    barRods: [
-                      /// SALES BAR
-                      BarChartRodData(
-                        toY: salesData[i],
-                        color: Colors.green,
-                        width: 8,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                  barGroups: List.generate(
+                    salesData.length,
 
-                      /// PURCHASE BAR
-                      BarChartRodData(
-                        toY: purchaseData[i],
-                        color: Colors.red,
-                        width: 8,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ],
+                    (i) => BarChartGroupData(
+                      x: i,
+
+                      barsSpace: 4,
+
+                      barRods: [
+                        /// SALES
+                        BarChartRodData(
+                          toY: salesData[i].abs(),
+
+                          color: Colors.green,
+
+                          width: 7,
+
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+
+                        /// PURCHASE
+                        BarChartRodData(
+                          toY: purchaseData[i].abs(),
+
+                          color: Colors.red,
+
+                          width: 7,
+
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  String _formatAmount(double value) {
+    if (value >= 1000) {
+      return "${(value / 1000).toStringAsFixed(0)}k";
+    }
+
+    return value.toInt().toString();
   }
 
   double _getMaxY() {
@@ -156,6 +196,6 @@ class SalesPurchaseChart extends StatelessWidget {
 
     double maxValue = maxSales > maxPurchase ? maxSales : maxPurchase;
 
-    return ((maxValue / 1000).ceil() * 1000).toDouble();
+    return maxValue + (maxValue * 0.2);
   }
 }

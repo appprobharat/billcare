@@ -13,6 +13,9 @@ class _ReportDuePageState extends State<ReportDuePage> {
   bool isLoading = true;
   String sortKey = "closing_balance";
   bool isAscending = true;
+  final TextEditingController searchController = TextEditingController();
+
+  List filteredDueList = [];
 
   @override
   void initState() {
@@ -33,6 +36,8 @@ class _ReportDuePageState extends State<ReportDuePage> {
 
         return due != 0;
       }).toList();
+
+      filteredDueList = List.from(dueList);
     }
 
     setState(() => isLoading = false);
@@ -67,16 +72,58 @@ class _ReportDuePageState extends State<ReportDuePage> {
     setState(() {});
   }
 
+  void filterDueList(String query) {
+    if (query.isEmpty) {
+      filteredDueList = List.from(dueList);
+    } else {
+      filteredDueList = dueList.where((item) {
+        final name = item['name']?.toString().toLowerCase() ?? "";
+
+        return name.contains(query.toLowerCase());
+      }).toList();
+    }
+
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
-      appBar: AppBar(title: const Text("Due Reports"), elevation: 0),
+      appBar: AppBar(
+        title: const Text("Due Reports"),
+        elevation: 0,
+        centerTitle: true,
+      ),
 
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: TextField(
+                    controller: searchController,
+                    onChanged: filterDueList,
+                    decoration: InputDecoration(
+                      hintText: "Search by name",
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 0,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     vertical: 10,
@@ -121,10 +168,10 @@ class _ReportDuePageState extends State<ReportDuePage> {
 
                 Expanded(
                   child: ListView.builder(
-                    itemCount: dueList.length,
+                    itemCount: filteredDueList.length,
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     itemBuilder: (context, index) {
-                      final item = dueList[index];
+                      final item = filteredDueList[index];
 
                       return Card(
                         elevation: 2,

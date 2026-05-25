@@ -61,7 +61,7 @@ class _SalesOrderHistoryPageState extends State<SalesOrderHistoryPage> {
     });
 
     final response = await ApiService.postRequest(
-      endpoint: "/salesman/sale/list",
+      endpoint: "/saleman/sale/list",
 
       body: {
         "status": selectedStatus.toLowerCase(),
@@ -136,7 +136,7 @@ class _SalesOrderHistoryPageState extends State<SalesOrderHistoryPage> {
               onPressed: () async {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SalesOrderHistoryPage()),
+                  MaterialPageRoute(builder: (_) => const SalesOrderPage()),
                 );
               },
             ),
@@ -167,132 +167,25 @@ class _SalesOrderHistoryPageState extends State<SalesOrderHistoryPage> {
             ),
           ),
 
-          // 🔹 Status Filter
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              children: ["all", "pending", "approved", "rejected"].map((
-                status,
-              ) {
-                final isSelected = selectedStatus == status;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GestureDetector(
-                    onTap: () async {
-                      setState(() {
-                        selectedStatus = status;
-                      });
+          SizedBox(
+            height: 30,
 
-                      await fetchOrders();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isSelected ? Colors.white : Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(left: 20),
+              children: [
+                _statusChip("all"),
+                _statusChip("pending"),
+                _statusChip("approved"),
+                _statusChip("rejected"),
+              ],
             ),
           ),
 
-          const SizedBox(height: 10),
-
-          // 🔹 Search
-          // Padding(
-          //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          //   child: Container(
-          //     height: 48,
-          //     decoration: BoxDecoration(
-          //       color: Colors.white,
-          //       borderRadius: BorderRadius.circular(14),
-          //       boxShadow: [
-          //         BoxShadow(
-          //           color: Colors.black.withOpacity(0.05),
-          //           blurRadius: 8,
-          //           offset: const Offset(0, 2),
-          //         ),
-          //       ],
-          //     ),
-          //     child: TextField(
-          //       controller: _searchController,
-          //       style: const TextStyle(
-          //         fontSize: 14,
-          //         fontWeight: FontWeight.w500,
-          //       ),
-          //       decoration: InputDecoration(
-          //         hintText: "Search invoice or item...",
-          //         hintStyle: TextStyle(
-          //           color: Colors.grey.shade500,
-          //           fontSize: 13,
-          //         ),
-
-          //         /// LEFT SEARCH ICON
-          //         prefixIcon: Icon(
-          //           Icons.search_rounded,
-          //           size: 20,
-          //           color: Colors.grey.shade700,
-          //         ),
-
-          //         /// CLEAR BUTTON
-          //         suffixIcon: _searchController.text.isNotEmpty
-          //             ? IconButton(
-          //                 icon: const Icon(Icons.close_rounded, size: 18),
-          //                 onPressed: () {
-          //                   _searchController.clear();
-          //                   applyFilter();
-          //                   setState(() {});
-          //                 },
-          //               )
-          //             : null,
-
-          //         filled: true,
-          //         fillColor: Colors.white,
-
-          //         contentPadding: const EdgeInsets.symmetric(
-          //           horizontal: 14,
-          //           vertical: 0,
-          //         ),
-
-          //         enabledBorder: OutlineInputBorder(
-          //           borderRadius: BorderRadius.circular(14),
-          //           borderSide: BorderSide(color: Colors.grey.shade300),
-          //         ),
-
-          //         focusedBorder: OutlineInputBorder(
-          //           borderRadius: BorderRadius.circular(14),
-          //           borderSide: BorderSide(
-          //             color: Colors.blue.shade400,
-          //             width: 1.2,
-          //           ),
-          //         ),
-          //       ),
-
-          //       onChanged: (_) {
-          //         setState(() {});
-          //         applyFilter();
-          //       },
-          //     ),
-          //   ),
-          // ),
-
-          // 🔹 List
           Expanded(
             child: isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : orders.isEmpty
+                : filteredOrders.isEmpty
                 ? const Center(child: Text("No Orders Found"))
                 : ListView.builder(
                     itemCount: filteredOrders.length,
@@ -326,127 +219,96 @@ class _SalesOrderHistoryPageState extends State<SalesOrderHistoryPage> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.08),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        item["invoice_no"] ?? "",
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                          color: Colors.blue,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          item["invoice_no"] ?? "",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 11,
+                                            color: Colors.blue,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ),
 
-                                Text(
-                                  "₹${item["amount"]}",
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _mini(
-                                    Icons.calendar_today,
-                                    item["date"] ?? "",
-                                  ),
-                                ),
+                                      const SizedBox(width: 6),
 
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-
-                                      decoration: BoxDecoration(
-                                        color:
-                                            item["status"]
-                                                    .toString()
-                                                    .toLowerCase() ==
-                                                "pending"
-                                            ? Colors.orange.withOpacity(0.12)
-                                            : item["status"]
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              item["status"]
                                                       .toString()
                                                       .toLowerCase() ==
                                                   "approved"
-                                            ? Colors.green.withOpacity(0.12)
-                                            : Colors.red.withOpacity(0.12),
+                                              ? Colors.green.withOpacity(0.12)
+                                              : item["status"]
+                                                        .toString()
+                                                        .toLowerCase() ==
+                                                    "pending"
+                                              ? Colors.orange.withOpacity(0.12)
+                                              : Colors.red.withOpacity(0.12),
 
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.circle,
-                                            size: 8,
-
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          item["status"] ?? "",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
                                             color:
                                                 item["status"]
                                                         .toString()
                                                         .toLowerCase() ==
-                                                    "pending"
-                                                ? Colors.orange
+                                                    "approved"
+                                                ? Colors.green
                                                 : item["status"]
                                                           .toString()
                                                           .toLowerCase() ==
-                                                      "approved"
-                                                ? Colors.green
+                                                      "pending"
+                                                ? Colors.orange
                                                 : Colors.red,
                                           ),
-
-                                          const SizedBox(width: 5),
-
-                                          Text(
-                                            item["status"] ?? "",
-
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-
-                                              color:
-                                                  item["status"]
-                                                          .toString()
-                                                          .toLowerCase() ==
-                                                      "pending"
-                                                  ? Colors.orange
-                                                  : item["status"]
-                                                            .toString()
-                                                            .toLowerCase() ==
-                                                        "approved"
-                                                  ? Colors.green
-                                                  : Colors.red,
-                                            ),
-                                          ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ),
-                                item["status"].toString().toLowerCase() ==
-                                        "pending"
-                                    ? IconButton(
-                                        onPressed: () {
+
+                                Text(
+                                  DateFormat(
+                                    "dd/MM/yy",
+                                  ).format(DateTime.parse(item["date"])),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                (item["status"].toString().toLowerCase() ==
+                                            "pending" ||
+                                        item["status"]
+                                                .toString()
+                                                .toLowerCase() ==
+                                            "rejected")
+                                    ? InkWell(
+                                        onTap: () {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -457,18 +319,19 @@ class _SalesOrderHistoryPageState extends State<SalesOrderHistoryPage> {
                                             ),
                                           );
                                         },
-                                        icon: const Icon(Icons.edit_outlined),
-                                      )
-                                    : const Padding(
-                                        padding: EdgeInsets.only(right: 10),
-                                        child: Icon(
-                                          Icons.lock_outline,
-                                          color: Colors.grey,
-                                          size: 20,
+                                        child: const Padding(
+                                          padding: EdgeInsets.only(left: 8),
+                                          child: Icon(
+                                            Icons.edit_outlined,
+                                            size: 18,
+                                          ),
                                         ),
-                                      ),
+                                      )
+                                    : const SizedBox(),
                               ],
                             ),
+
+                            const SizedBox(height: 8),
 
                             Theme(
                               data: Theme.of(
@@ -493,17 +356,37 @@ class _SalesOrderHistoryPageState extends State<SalesOrderHistoryPage> {
                                   ),
                                 ),
 
-                                title: Text(
-                                  "Items (${item["items"]?.length ?? 0})",
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        "Items (${item["items"]?.length ?? 0})",
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+
+                                    Text(
+                                      "₹${item["amount"]}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 6),
+                                  ],
                                 ),
+
                                 children: [
                                   const SizedBox(height: 5),
 
-                                  ...(item["items"] as List).map((product) {
+                                  ...((item["items"] ?? []) as List).map((
+                                    product,
+                                  ) {
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 8),
 
@@ -594,33 +477,141 @@ class _SalesOrderHistoryPageState extends State<SalesOrderHistoryPage> {
     );
   }
 
-  Widget _mini(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 12, color: Colors.grey),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 11),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _dateBox({required String title, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
+
       child: Container(
         height: 36,
+
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(10),
         ),
-        alignment: Alignment.center,
-        child: Text(title, style: const TextStyle(fontSize: 12)),
+
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_month_outlined,
+              size: 15,
+              color: Colors.grey.shade700,
+            ),
+
+            Expanded(
+              child: Text(
+                title,
+
+                textAlign: TextAlign.center,
+
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String status) {
+    final bool isSelected = selectedStatus == status;
+
+    Color color;
+
+    switch (status) {
+      case "approved":
+        color = Colors.green;
+        break;
+
+      case "rejected":
+        color = Colors.red;
+        break;
+
+      case "pending":
+        color = Colors.orange;
+        break;
+
+      default:
+        color = Colors.blue;
+    }
+
+    IconData icon;
+
+    switch (status) {
+      case "approved":
+        icon = Icons.check_circle;
+        break;
+
+      case "rejected":
+        icon = Icons.cancel;
+        break;
+
+      case "pending":
+        icon = Icons.access_time_filled;
+        break;
+
+      default:
+        icon = Icons.list_alt;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+
+        onTap: () async {
+          selectedStatus = status;
+
+          setState(() {});
+
+          await fetchOrders();
+        },
+
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+
+          height: 30,
+
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+
+          decoration: BoxDecoration(
+            color: isSelected ? color : color.withOpacity(0.08),
+
+            borderRadius: BorderRadius.circular(20),
+
+            border: Border.all(
+              color: isSelected ? color : color.withOpacity(0.20),
+
+              width: 0.8,
+            ),
+          ),
+
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+
+            children: [
+              Icon(icon, size: 11, color: isSelected ? Colors.white : color),
+
+              const SizedBox(width: 4),
+
+              Text(
+                status[0].toUpperCase() + status.substring(1),
+
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+
+                  color: isSelected ? Colors.white : color,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

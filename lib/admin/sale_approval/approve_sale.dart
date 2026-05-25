@@ -461,28 +461,72 @@ class _ApproveSalePageState extends State<ApproveSalePage> {
                                 ),
 
                                 const SizedBox(height: 10),
-
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(
-                                      Icons.call_outlined,
-                                      size: 13,
-                                      color: Colors.grey.shade500,
-                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.call_outlined,
+                                                size: 13,
+                                                color: Colors.grey.shade500,
+                                              ),
 
-                                    const SizedBox(width: 4),
+                                              const SizedBox(width: 4),
 
-                                    Text(
-                                      order["contact_no"].toString(),
+                                              Text(
+                                                order["contact_no"].toString(),
 
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey.shade700,
-                                        fontWeight: FontWeight.w500,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey.shade700,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 4),
+
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.person_outline,
+                                                size: 12,
+                                                color: Colors.blueGrey,
+                                              ),
+
+                                              const SizedBox(width: 4),
+
+                                              Expanded(
+                                                child: Text(
+                                                  "Added By: ${order["added_by"] ?? ""}",
+
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors
+                                                        .blueGrey
+                                                        .shade700,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
                                     ),
 
-                                    const Spacer(),
+                                    const SizedBox(width: 8),
 
                                     Text(
                                       "₹${order["grand_total"]}",
@@ -505,7 +549,6 @@ class _ApproveSalePageState extends State<ApproveSalePage> {
                                         color: getStatusColor(
                                           status,
                                         ).withOpacity(0.12),
-
                                         borderRadius: BorderRadius.circular(30),
                                       ),
 
@@ -735,7 +778,6 @@ class _ApproveSalePageState extends State<ApproveSalePage> {
                                   ],
                                 ),
 
-                 
                               if (status == "approved")
                                 Container(
                                   width: double.infinity,

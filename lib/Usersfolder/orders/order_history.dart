@@ -166,7 +166,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
               ],
             ),
           ),
-
           // 🔹 Status Filter
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -613,14 +612,39 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   Widget _dateBox({required String title, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
+
       child: Container(
         height: 36,
+
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(10),
         ),
-        alignment: Alignment.center,
-        child: Text(title, style: const TextStyle(fontSize: 12)),
+
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_month_outlined,
+              size: 15,
+              color: Colors.grey.shade700,
+            ),
+
+            Expanded(
+              child: Text(
+                title,
+
+                textAlign: TextAlign.center,
+
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

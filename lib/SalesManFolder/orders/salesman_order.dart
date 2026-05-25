@@ -1,6 +1,6 @@
 import 'package:billcare/SalesManFolder/orders/salesman_order_history.dart';
 import 'package:billcare/api/api_service.dart';
-import 'package:billcare/helper.dart';
+
 import 'package:flutter/material.dart';
 
 class SalesOrderPage extends StatefulWidget {
@@ -17,10 +17,15 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
   List<Map<String, dynamic>> allProducts = [];
   List<Map<String, dynamic>> filteredProducts = [];
   final TextEditingController itemController = TextEditingController();
-
+  final _customerController = TextEditingController();
+  final FocusNode _customerFocusNode = FocusNode();
   final TextEditingController categoryController = TextEditingController();
-  List<Map<String, dynamic>> allClients = [];
-
+  bool _isLoadingClients = true;
+  String? _selectedClientId;
+  List<dynamic> _allClients = [];
+  List<dynamic> _filteredClients = [];
+  bool _showClientList = false;
+  final bool _allowClientSelection = true;
   String? selectedClient;
   bool isLoading = true;
   double get total => subtotal + gst;
@@ -57,13 +62,74 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
   @override
   void initState() {
     super.initState();
-    fetchItems();
-    fetchClients();
+
+    _fetchClients();
+
     fetchItems().then((_) {
       if (widget.isEdit && widget.saleId != null) {
         fetchSaleForEdit();
       }
     });
+  }
+
+  void _filterClients() {
+    final query = _customerController.text.toLowerCase();
+
+    if (!_allowClientSelection) {
+      setState(() => _showClientList = false);
+      return;
+    }
+
+    if (query.isEmpty) {
+      setState(() {
+        _filteredClients = _allClients;
+        _showClientList = true;
+        _selectedClientId = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _showClientList = true;
+      _filteredClients = _allClients
+          .where(
+            (client) =>
+                (client['Name']?.toLowerCase().contains(query) ?? false) ||
+                (client['ContactNo']?.toString().contains(query) ?? false) ||
+                (client['State']?.toLowerCase().contains(query) ?? false) ||
+                (client['Type']?.toLowerCase().contains(query) ?? false),
+          )
+          .toList();
+      _selectedClientId = null;
+    });
+  }
+
+  Widget _clientTile(Map<String, dynamic> client) {
+    final String clientName = client['Name'] ?? 'N/A';
+    final String clientMobile = client['ContactNo']?.toString() ?? 'N/A';
+    final String clientState = client['State'] ?? 'N/A';
+    final String type = client['Type'] ?? 'N/A';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 0),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+        visualDensity: const VisualDensity(vertical: -4),
+        title: Text(
+          "$clientName | $clientMobile | $clientState ($type)",
+          style: const TextStyle(fontSize: 14),
+        ),
+        onTap: () {
+          _customerController.text = client['Name'] ?? '';
+          setState(() {
+            _showClientList = false;
+            _selectedClientId = client['id'].toString();
+          });
+          _customerFocusNode.unfocus();
+        },
+      ),
+    );
   }
 
   void filterItems() {
@@ -86,14 +152,29 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
     });
   }
 
-  Future<void> fetchClients() async {
-    final response = await ApiService.postRequest(endpoint: "/get_client");
-
-    if (response != null) {
-      setState(() {
-        allClients = List<Map<String, dynamic>>.from(response);
-      });
+  Future<void> _fetchClients() async {
+    if (mounted) setState(() => _isLoadingClients = true);
+    try {
+      final clients = await ApiService.fetchClients();
+      if (mounted) {
+        setState(() {
+          _allClients = clients;
+          _filteredClients = _allClients;
+          _isLoadingClients = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingClients = false);
+        _showSnackbar("Failed to load clients. Please try again.", Colors.red);
+      }
     }
+  }
+
+  void _showSnackbar(String message, Color backgroundColor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: backgroundColor),
+    );
   }
 
   Future<void> fetchSaleForEdit() async {
@@ -102,7 +183,7 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
     });
 
     final response = await ApiService.postRequest(
-      endpoint: "/salesman/sale/edit",
+      endpoint: "/saleman/sale/edit",
       body: {"id": widget.saleId.toString()},
     );
 
@@ -111,23 +192,50 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
     if (response != null && response["status"] == true) {
       final data = response["data"];
 
+      // ✅ CLIENT PREFILL
+      _selectedClientId = data["client_id"]?.toString();
+
+      _customerController.text = data["client_name"]?.toString() ?? "";
+
       final items = List<Map<String, dynamic>>.from(data["items"]);
 
+      // ✅ RESET ALL QTY FIRST
+      for (var product in allProducts) {
+        product["qty"] = 0;
+      }
+
+      // ✅ SET ORDER ITEMS
       for (var orderItem in items) {
-        final itemId = orderItem["item_id"];
+        final itemId = orderItem["item_id"]?.toString().trim();
 
         final qty = int.tryParse(orderItem["quantity"].toString()) ?? 0;
 
-        final index = allProducts.indexWhere(
-          (e) => e["id"].toString() == itemId.toString(),
-        );
+        final salePrice =
+            double.tryParse(orderItem["sale_price"]?.toString() ?? "0") ?? 0;
 
+        final gst = double.tryParse(orderItem["gst"]?.toString() ?? "0") ?? 0;
+
+        final index = allProducts.indexWhere(
+          (e) => e["id"]?.toString().trim() == itemId,
+        );
+        debugPrint("MATCHING ITEM => API:$itemId | INDEX:$index");
         if (index != -1) {
           allProducts[index]["qty"] = qty;
+
+          // ✅ OPTIONAL PRICE/GST UPDATE
+          allProducts[index]["SalePrice"] = salePrice.toStringAsFixed(2);
+
+          allProducts[index]["gst"] = gst;
         }
       }
 
-      filteredProducts = List.from(allProducts);
+      filteredProducts = allProducts
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      debugPrint(
+        "✅ PREFILLED ITEMS: ${allProducts.where((e) => e["qty"] > 0).length}",
+      );
+      setState(() {});
     }
 
     setState(() {
@@ -140,8 +248,10 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
       isLoading = true;
     });
 
-    final response = await ApiService.postRequest(endpoint: "/get_item");
-
+    final response = await ApiService.postRequest(
+      endpoint: "/saleman/get_item",
+    );
+    debugPrint("🛒 FIRST ITEM = ${response.first}");
     if (response != null) {
       allProducts = List<Map<String, dynamic>>.from(
         response.map(
@@ -206,20 +316,23 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
       );
       return;
     }
+    if (_selectedClientId == null || _selectedClientId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Please select a client"),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      return;
+    }
 
     /// 🔥 BODY
     Map<String, dynamic> body = {
       /// 🔥 UPDATE ONLY
       if (isEdit && saleId != null) "id": saleId.toString(),
-
-      if (isEdit)
-        "ClientId":
-            allClients
-                .firstWhere(
-                  (e) => selectedClient!.startsWith(e["Name"].toString()),
-                )["id"]
-                ?.toString() ??
-            "",
+      "client_id": _selectedClientId ?? "",
 
       "Date": DateTime.now().toString().split(" ").first,
 
@@ -300,7 +413,7 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
 
     debugPrint("════════ END BODY ════════");
     final response = await ApiService.postRequest(
-      endpoint: "/salesman/sale/store",
+      endpoint: "/saleman/sale/store",
       body: body,
     );
 
@@ -340,345 +453,460 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           title: Text(widget.isEdit ? "Edit Order" : "Order Now"),
           centerTitle: true,
         ),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Row(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height,
+              child: Stack(
                 children: [
-                  /// ITEM SEARCH
-                  Expanded(
-                    child: SizedBox(
-                      height: 45,
-                      child: TextField(
-                        controller: itemController,
-                        onChanged: (_) => filterItems(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
                         ),
-                        decoration: InputDecoration(
-                          hintText: "Item Name",
-                          hintStyle: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade500,
-                          ),
+                        child: Row(
+                          children: [
+                            /// ITEM SEARCH
+                            Expanded(
+                              child: SizedBox(
+                                height: 45,
+                                child: TextField(
+                                  controller: itemController,
+                                  onChanged: (_) => filterItems(),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: "Item Name",
+                                    hintStyle: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade500,
+                                    ),
 
-                          prefixIcon: Icon(
-                            Icons.search,
-                            size: 18,
-                            color: Colors.grey.shade700,
-                          ),
+                                    prefixIcon: Icon(
+                                      Icons.search,
+                                      size: 18,
+                                      color: Colors.grey.shade700,
+                                    ),
 
-                          filled: true,
-                          fillColor: Colors.white,
+                                    filled: true,
+                                    fillColor: Colors.white,
 
-                          isDense: true,
+                                    isDense: true,
 
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 11,
-                          ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 11,
+                                    ),
 
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                              color: Colors.grey.shade300,
-                              width: 1.2,
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.2,
+                                      ),
+                                    ),
+
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: Theme.of(context).primaryColor,
+                                        width: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
 
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).primaryColor,
-                              width: 1.4,
+                            const SizedBox(width: 10),
+
+                            /// CATEGORY SEARCH
+                            Expanded(
+                              child: SizedBox(
+                                height: 45,
+                                child: TextField(
+                                  controller: categoryController,
+                                  onChanged: (_) => filterItems(),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: "Category Name",
+                                    hintStyle: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade500,
+                                    ),
+
+                                    prefixIcon: Icon(
+                                      Icons.category_outlined,
+                                      size: 18,
+                                      color: Colors.grey.shade700,
+                                    ),
+
+                                    filled: true,
+                                    fillColor: Colors.white,
+
+                                    isDense: true,
+
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 11,
+                                    ),
+
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                        width: 1.2,
+                                      ),
+                                    ),
+
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: Theme.of(context).primaryColor,
+                                        width: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
 
-                  const SizedBox(width: 10),
-
-                  /// CATEGORY SEARCH
-                  Expanded(
-                    child: SizedBox(
-                      height: 45,
-                      child: TextField(
-                        controller: categoryController,
-                        onChanged: (_) => filterItems(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "Category Name",
-                          hintStyle: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey.shade500,
-                          ),
-
-                          prefixIcon: Icon(
-                            Icons.category_outlined,
-                            size: 18,
-                            color: Colors.grey.shade700,
-                          ),
-
-                          filled: true,
-                          fillColor: Colors.white,
-
-                          isDense: true,
-
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 11,
-                          ),
-
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                              color: Colors.grey.shade300,
-                              width: 1.2,
-                            ),
-                          ),
-
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                              color: Theme.of(context).primaryColor,
-                              width: 1.4,
-                            ),
-                          ),
+                      Padding(
+                        padding: const EdgeInsets.all(5),
+                        child: _compactField(
+                          controller: _customerController,
+                          hint: "Client Name | Mobile | State (Search)",
+                          focusNode: _customerFocusNode,
+                          autofocus: false,
+                          enabled: _allowClientSelection,
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: OverlayDropdown(
-                label: "",
-                value: selectedClient,
-                items: allClients.map((e) {
-                  final name = e["Name"] ?? "";
-                  final phone = e["ContactNo"] ?? "";
-                  final state = e["State"] ?? "";
-                  final type = e["Type"] ?? "";
-
-                  return "$name | $phone | $state ($type)";
-                }).toList(),
-                onSelect: (value) {
-                  setState(() {
-                    selectedClient = value.split("|").first.trim();
-                  });
-                },
-              ),
-            ),
-            // 🔹 PRODUCT GRID
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : filteredProducts.isEmpty
-                  ? const Center(child: Text("No Items Found"))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(10),
-                      itemCount: filteredProducts.length,
-                      itemBuilder: (_, i) {
-                        final item = filteredProducts[i];
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(12),
+                      if (_showClientList)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 10),
+                          constraints: const BoxConstraints(maxHeight: 220),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(10),
                             boxShadow: const [
                               BoxShadow(color: Colors.black12, blurRadius: 6),
                             ],
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // 🔹 LEFT SIDE (More Details)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  /// 🔥 NAME + CATEGORY
-                                  RichText(
-                                    text: TextSpan(
-                                      text: item["Name"] ?? "",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: Colors.black,
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: item["Category"] != null
-                                              ? " (${item["Category"]})"
-                                              : "",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
+                          child: _isLoadingClients
+                              ? const Center(child: CircularProgressIndicator())
+                              : _filteredClients.isEmpty
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: Text("No Client Found"),
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: _filteredClients.length,
+                                  itemBuilder: (_, i) =>
+                                      _clientTile(_filteredClients[i]),
+                                ),
+                        ),
+                      // 🔹 PRODUCT GRID
+                      Expanded(
+                        child: isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : filteredProducts.isEmpty
+                            ? const Center(child: Text("No Items Found"))
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(10),
+                                itemCount: filteredProducts.length,
+                                itemBuilder: (_, i) {
+                                  final item = filteredProducts[i];
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(14),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 6,
                                         ),
                                       ],
                                     ),
-                                  ),
-
-                                  const SizedBox(height: 7),
-
-                                  /// 🔥 PRICE | STOCK | GST
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "₹${item["SalePrice"] ?? "0"}   |  ",
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-
-                                      Text(
-                                        "Stock: ${item["Stock"] ?? "0"}",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-
-                                          /// 🔥 STOCK COLOR
-                                          color:
-                                              (int.tryParse(
-                                                        item["Stock"]
-                                                                ?.toString() ??
-                                                            "0",
-                                                      ) ??
-                                                      0) >
-                                                  0
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                      ),
-                                      Text(
-                                        "   |   GST: ${(double.tryParse(item["gst"]?.toString() ?? "0") ?? 0).toStringAsFixed(0)}%",
-                                        style: TextStyle(
-                                          fontSize: 12,
-
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-
-                              SizedBox(
-                                height: 32,
-                                width: 90,
-                                child: item["qty"] == 0
-                                    ? ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                        ),
-                                        onPressed: () => increaseQty(i),
-                                        child: const Text(
-                                          "Add",
-                                          style: TextStyle(fontSize: 12),
-                                        ),
-                                      )
-                                    : Container(
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                            color: Colors.blue,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        // 🔹 LEFT SIDE (More Details)
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            GestureDetector(
-                                              onTap: () => decreaseQty(i),
-                                              child: const Icon(
-                                                Icons.remove,
-                                                size: 16,
+                                            /// 🔥 NAME + CATEGORY
+                                            RichText(
+                                              text: TextSpan(
+                                                text: item["Name"] ?? "",
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15,
+                                                  color: Colors.black,
+                                                ),
+                                                children: [
+                                                  TextSpan(
+                                                    text:
+                                                        item["Category"] != null
+                                                        ? " (${item["Category"]})"
+                                                        : "",
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      fontSize: 12,
+                                                      color: Colors.grey[600],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
-                                            Text(
-                                              "${item["qty"]}",
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            GestureDetector(
-                                              onTap: () => increaseQty(i),
-                                              child: const Icon(
-                                                Icons.add,
-                                                size: 16,
-                                              ),
+
+                                            const SizedBox(height: 7),
+
+                                            /// 🔥 PRICE | STOCK | GST
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  "₹${item["SalePrice"] ?? "0"}   |  ",
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+
+                                                Text(
+                                                  "Stock: ${item["Stock"] ?? "0"}",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+
+                                                    /// 🔥 STOCK COLOR
+                                                    color:
+                                                        (int.tryParse(
+                                                                  item["Stock"]
+                                                                          ?.toString() ??
+                                                                      "0",
+                                                                ) ??
+                                                                0) >
+                                                            0
+                                                        ? Colors.green
+                                                        : Colors.red,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "   |   GST: ${(double.tryParse(item["gst"]?.toString() ?? "0") ?? 0).toStringAsFixed(0)}%",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
-                                      ),
+
+                                        SizedBox(
+                                          height: 32,
+                                          width: 90,
+                                          child: item["qty"] == 0
+                                              ? ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(
+                                                    padding: EdgeInsets.zero,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  onPressed: () =>
+                                                      increaseQty(i),
+                                                  child: const Text(
+                                                    "Add",
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                )
+                                              : Container(
+                                                  decoration: BoxDecoration(
+                                                    border: Border.all(
+                                                      color: Colors.blue,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceEvenly,
+                                                    children: [
+                                                      GestureDetector(
+                                                        onTap: () =>
+                                                            decreaseQty(i),
+                                                        child: const Icon(
+                                                          Icons.remove,
+                                                          size: 16,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        "${item["qty"]}",
+                                                        style: const TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      GestureDetector(
+                                                        onTap: () =>
+                                                            increaseQty(i),
+                                                        child: const Icon(
+                                                          Icons.add,
+                                                          size: 16,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-
-            // 🔹 SUMMARY CARD
-            Container(
-              margin: const EdgeInsets.all(10),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [BoxShadow(color: Colors.black12)],
-              ),
-              child: Column(
-                children: [
-                  _row("Subtotal", subtotal),
-                  _row("GST", gst),
-                  _row("Total", total, bold: true),
-
-                  const SizedBox(height: 10),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        submitOrder(
-                          isEdit: widget.isEdit,
-                          saleId: widget.saleId,
-                        );
-                      },
-                      child: Text(
-                        widget.isEdit ? "Update Order" : "Submit Order",
                       ),
-                    ),
+
+                      // 🔹 SUMMARY CARD
+                      Container(
+                        margin: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [BoxShadow(color: Colors.black12)],
+                        ),
+                        child: Column(
+                          children: [
+                            _row("Subtotal", subtotal),
+                            _row("GST", gst),
+                            _row("Total", total, bold: true),
+
+                            const SizedBox(height: 10),
+
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  submitOrder(
+                                    isEdit: widget.isEdit,
+                                    saleId: widget.saleId,
+                                  );
+                                },
+                                child: Text(
+                                  widget.isEdit
+                                      ? "Update Order"
+                                      : "Submit Order",
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _compactField({
+    required TextEditingController controller,
+    String? label,
+    TextInputType? keyboardType,
+    int? maxLength,
+    String? Function(String?)? validator,
+    bool readOnly = false,
+    bool enabled = true,
+    bool autofocus = false,
+    String? hint,
+    FocusNode? focusNode,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label != null) ...[
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+
+        TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          keyboardType: keyboardType,
+          maxLength: maxLength,
+          validator: validator,
+          readOnly: readOnly,
+          enabled: enabled,
+          autofocus: autofocus,
+
+          onTap: () {
+            setState(() {
+              _showClientList = true;
+              _filteredClients = _allClients;
+            });
+          },
+
+          onChanged: (_) {
+            _filterClients();
+          },
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            counterText: "",
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 8,
+            ),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
     );
   }
 

@@ -1,3 +1,4 @@
+import 'package:billcare/admin/settings/change_password.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:flutter/material.dart';
 
@@ -24,7 +25,7 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
       isLoading = true;
     });
 
-    final res = await ApiService.postRequest(endpoint: "/salesman/profile");
+    final res = await ApiService.postRequest(endpoint: "/saleman/profile");
 
     if (res != null) {
       setState(() {
@@ -35,127 +36,6 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
     setState(() {
       isLoading = false;
     });
-  }
-
-  void changePassword() {
-    showDialog(
-      context: context,
-      builder: (_) {
-        final oldCtrl = TextEditingController();
-        final newCtrl = TextEditingController();
-
-        bool showOld = false;
-        bool showNew = false;
-
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 🔹 TITLE
-                    Row(
-                      children: const [
-                        Icon(Icons.lock, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text(
-                          "Change Password",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 🔹 OLD PASSWORD
-                    TextField(
-                      controller: oldCtrl,
-                      obscureText: !showOld,
-                      decoration: InputDecoration(
-                        hintText: "Old Password",
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            showOld ? Icons.visibility : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() => showOld = !showOld);
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // 🔹 NEW PASSWORD
-                    TextField(
-                      controller: newCtrl,
-                      obscureText: !showNew,
-                      decoration: InputDecoration(
-                        hintText: "New Password",
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        prefixIcon: const Icon(Icons.lock),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            showNew ? Icons.visibility : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() => showNew = !showNew);
-                          },
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // 🔹 BUTTONS
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text("Cancel"),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // TODO: API
-                              Navigator.pop(context);
-                            },
-                            child: const Text("Update"),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   @override
@@ -205,9 +85,9 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
                               backgroundImage:
                                   profile["Photo"] != null &&
                                       profile["Photo"].toString().isNotEmpty
-                                  ? NetworkImage(profile["Photo"])
+                                  ? NetworkImage(profile["Photo"].toString())
                                   : null,
-
+                              onBackgroundImageError: (_, __) {},
                               child:
                                   profile["Photo"] == null ||
                                       profile["Photo"].toString().isEmpty
@@ -221,7 +101,7 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
                             const SizedBox(height: 12),
 
                             Text(
-                              profile["Name"] ?? "Customer",
+                              profile["Name"] ?? "Salesman",
 
                               textAlign: TextAlign.center,
 
@@ -235,12 +115,12 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
                             const SizedBox(height: 4),
 
                             Text(
-                              profile["ContactNo"]?.toString() ??
-                                  "Not Provided",
+                              "ID : ${profile["EmployeeId"] ?? "-"}",
 
                               style: TextStyle(
-                                color: Colors.black26,
-                                fontSize: 13,
+                                color: Colors.grey.shade700,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -283,12 +163,6 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
                             ),
 
                             _profileRow(
-                              Icons.badge_outlined,
-                              "GSTIN :",
-                              profile["GSTIN"],
-                            ),
-
-                            _profileRow(
                               Icons.credit_card_outlined,
                               "PAN :",
                               profile["PanNo"],
@@ -313,11 +187,10 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
                             ),
 
                             _profileRow(
-                              Icons.pin_drop_outlined,
-                              "Pincode :",
-                              profile["Pincode"],
+                              Icons.calendar_month_outlined,
+                              "Joining :",
+                              profile["JoiningDate"],
                             ),
-
                             _profileRow(
                               Icons.account_balance_outlined,
                               "Bank :",
@@ -347,7 +220,14 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
                         height: 46,
 
                         child: ElevatedButton.icon(
-                          onPressed: changePassword,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ChangePasswordPage(),
+                              ),
+                            );
+                          },
 
                           icon: const Icon(Icons.lock_reset_outlined),
 
@@ -401,6 +281,7 @@ class _SalesProfilePageState extends State<SalesProfilePage> {
 
             child: Text(
               title,
+              softWrap: true,
 
               style: TextStyle(
                 fontSize: 13,

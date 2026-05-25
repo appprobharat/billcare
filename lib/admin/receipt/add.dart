@@ -3,8 +3,8 @@ import 'package:billcare/api/api_service.dart';
 import 'package:billcare/helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AddReceiptPage extends StatefulWidget {
   final bool isEdit;
@@ -60,7 +60,7 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
   double _amountBeforeReceipt = 0.0;
   double _amountAfterReceipt = 0.0;
   File? _attachmentFile;
-  final ImagePicker _picker = ImagePicker();
+  String? _attachmentUrl;
 
   // --- Helper to safely manage loading state ---
   void _setLoading(bool loading) {
@@ -99,36 +99,41 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
     super.dispose();
   }
 
-  // // --- Network Methods ---
-
-  // /// Retrieves the authentication token from SharedPreferences.
-  // Future<String?> _getToken() async {
-  //   final token = await AuthStorage.getToken();
-
-  //   if (token == null || token.isEmpty) {
-  //     if (!mounted) return null;
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text("Session expired. Please login again.")),
-  //     );
-
-  //     Navigator.pop(context);
-  //     return null;
-  //   }
-
-  //   return token;
-  // }
-
   Future<void> _pickAttachment() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70,
-    );
+    try {
+      final result = await FilePicker.pickFiles(
+        allowMultiple: false,
 
-    if (image != null) {
+        type: FileType.custom,
+
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      );
+
+      if (result == null) return;
+
+      String? filePath = result.files.single.path;
+
+      if (filePath == null) return;
+
+      final file = File(filePath);
+
+      final fileSize = await file.length();
+
+      if (fileSize > 150 * 1024) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("File size should be under 150KB")),
+        );
+
+        return;
+      }
+
       setState(() {
-        _attachmentFile = File(image.path);
+        _attachmentFile = file;
       });
+    } catch (e) {
+      debugPrint("FILE PICK ERROR : $e");
     }
   }
 
@@ -194,8 +199,6 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
   }
 
   Future<void> _fetchReceiptDetails(int id, String type) async {
-    _setLoading(true);
-
     try {
       final data = await ApiService.postRequest(
         endpoint: "/receipt/edit",
@@ -203,6 +206,7 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
       );
 
       if (data != null) {
+        debugPrint("🔥 RECEIPT RESPONSE : $data");
         final inputDate = DateTime.tryParse(data["Date"]);
 
         final formattedDate = inputDate != null
@@ -237,14 +241,11 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
 
           _amountAfterReceipt =
               double.tryParse(data["AfterPay"].toString()) ?? 0.0;
+          _attachmentUrl = data["Attachment"];
         });
 
         await _fetchClients(type);
-      } else {
-        debugPrint("❌ Failed to fetch receipt details");
-      }
-    } catch (e) {
-      debugPrint("⚠️ Error in _fetchReceiptDetails: $e");
+      } else {}
     } finally {
       if (mounted) {
         setState(() {
@@ -280,7 +281,9 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
 
       // ✅ Body
       final body = {
-        "Type": _selectedReceiptType ?? "Party",
+        "Type": _selectedReceiptType == "Party"
+            ? "Client"
+            : _selectedReceiptType,
         "id": _selectedClientId.toString(),
         "Date": formattedDate,
         "Amount": _paidAmountController.text,
@@ -294,7 +297,6 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
       String endpoint;
       String successMessage;
 
-      // ✅ Edit / Add
       if (widget.isEdit && widget.receiptId != null) {
         body["ReceiptId"] = widget.receiptId.toString();
 
@@ -834,7 +836,9 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
                                   borderRadius: BorderRadius.circular(8),
                                   color: Colors.grey.shade50,
                                 ),
-                                child: _attachmentFile == null
+                                child:
+                                    (_attachmentFile == null &&
+                                        _attachmentUrl == null)
                                     ? Row(
                                         children: const [
                                           Icon(Icons.image, size: 18),
@@ -845,41 +849,98 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
                                           ),
                                         ],
                                       )
-                                    : Stack(
-                                        alignment: Alignment.topRight,
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            child: Image.file(
-                                              _attachmentFile!,
-                                              height: 120,
-                                              width: double.infinity,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
+                                    : Builder(
+                                        builder: (context) {
+                                          final filePath =
+                                              _attachmentFile?.path ??
+                                              _attachmentUrl ??
+                                              "";
 
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                _attachmentFile = null;
-                                              });
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.all(4),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.red,
-                                                shape: BoxShape.circle,
+                                          final isPdf = filePath
+                                              .toLowerCase()
+                                              .endsWith(".pdf");
+
+                                          return Stack(
+                                            alignment: Alignment.topRight,
+                                            children: [
+                                              Container(
+                                                width: double.infinity,
+                                                height: 120,
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                  color: Colors.grey.shade200,
+                                                ),
+
+                                                child: isPdf
+                                                    ? Column(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        children: const [
+                                                          Icon(
+                                                            Icons
+                                                                .picture_as_pdf,
+                                                            color: Colors.red,
+                                                            size: 40,
+                                                          ),
+                                                          SizedBox(height: 8),
+                                                          Text("PDF Selected"),
+                                                        ],
+                                                      )
+                                                    : ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                        child:
+                                                            _attachmentFile !=
+                                                                null
+                                                            ? Image.file(
+                                                                _attachmentFile!,
+                                                                fit: BoxFit
+                                                                    .cover,
+                                                                width: double
+                                                                    .infinity,
+                                                                height: 120,
+                                                              )
+                                                            : Image.network(
+                                                                _attachmentUrl!,
+                                                                fit: BoxFit
+                                                                    .cover,
+                                                                width: double
+                                                                    .infinity,
+                                                                height: 120,
+                                                              ),
+                                                      ),
                                               ),
-                                              child: const Icon(
-                                                Icons.close,
-                                                color: Colors.white,
-                                                size: 16,
+
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _attachmentFile = null;
+                                                    _attachmentUrl = null;
+                                                  });
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    4,
+                                                  ),
+                                                  decoration:
+                                                      const BoxDecoration(
+                                                        color: Colors.red,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                  child: const Icon(
+                                                    Icons.close,
+                                                    color: Colors.white,
+                                                    size: 16,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                        ],
+                                            ],
+                                          );
+                                        },
                                       ),
                               ),
                             ),
@@ -890,9 +951,20 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
 
                         SizedBox(
                           width: double.infinity,
+
                           child: ElevatedButton.icon(
-                            onPressed: isLoading ? null : _saveReceipt,
-                            icon: const Icon(Icons.save),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+
+                            onPressed: () async {
+                              await _saveReceipt();
+                            },
+
+                            icon: Icon(
+                              widget.isEdit ? Icons.update : Icons.save,
+                            ),
+
                             label: Text(
                               widget.isEdit ? "Update Receipt" : "Save Receipt",
                             ),
@@ -902,6 +974,11 @@ class _AddReceiptPageState extends State<AddReceiptPage> {
                     ),
                   ),
                 ),
+                if (isLoading)
+                  Container(
+                    color: Colors.black.withOpacity(0.2),
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
               ],
             ),
     );

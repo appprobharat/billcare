@@ -40,6 +40,9 @@ class _DashboardPageState extends State<DashboardPage> {
   List<Map<String, dynamic>> savedData = [];
   Map<String, dynamic>? selectedCompany;
   Map<String, dynamic>? selectedSession;
+  Map<String, dynamic>? dashboardData;
+
+  bool graphLoading = true;
 
   String userName = "vishal";
   String userPhotoUrl = "";
@@ -50,9 +53,30 @@ class _DashboardPageState extends State<DashboardPage> {
     _safeAuthCheck();
     _loadSavedData();
     _loadCompanyName();
+    fetchDashboardData();
     _syncFcmToken();
     loadCompanies();
     loadSessions();
+  }
+
+  Future<void> fetchDashboardData() async {
+    setState(() {
+      graphLoading = true;
+    });
+
+    final response = await ApiService.postRequest(endpoint: "/dashboard");
+
+    if (response != null && response["status"] == true) {
+      setState(() {
+        dashboardData = response["data"];
+
+        graphLoading = false;
+      });
+    } else {
+      setState(() {
+        graphLoading = false;
+      });
+    }
   }
 
   Future<void> _loadSavedData() async {
@@ -540,69 +564,60 @@ class _DashboardPageState extends State<DashboardPage> {
                   ],
                 ),
               ),
-              Card(
-                child: SalesPurchaseChart(
-                  salesData: [
-                    1200,
-                    1500,
-                    1800,
-                    1700,
-                    2000,
-                    2200,
-                    2100,
-                    2300,
-                    2500,
-                    2400,
-                    2600,
-                    2800,
-                  ],
-                  purchaseData: [
-                    800,
-                    900,
-                    1000,
-                    950,
-                    1100,
-                    1200,
-                    1150,
-                    1300,
-                    1400,
-                    1350,
-                    1500,
-                    1600,
-                  ],
-                ),
-              ),
-              IncomeExpenseChart(
-                incomeData: [
-                  1000,
-                  1500,
-                  1800,
-                  1200,
-                  2200,
-                  2500,
-                  2400,
-                  2600,
-                  2800,
-                  3000,
-                  3200,
-                  3500,
-                ],
+              graphLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(30),
+                      child: CircularProgressIndicator(),
+                    )
+                  : Column(
+                      children: [
+                        /// 🔥 SALES PURCHASE GRAPH
+                        Padding(
+                          padding: const EdgeInsets.all(12),
 
-                expenseData: [
-                  800,
-                  1000,
-                  1200,
-                  900,
-                  1500,
-                  1700,
-                  1600,
-                  1800,
-                  1900,
-                  2100,
-                  2200,
-                  2400,
-                ],
-              ),
+                          child: SalesPurchaseChart(
+                            months: List<String>.from(
+                              dashboardData?["months"] ?? [],
+                            ),
+
+                            salesData: List<double>.from(
+                              (dashboardData?["SaleActivity"] ?? []).map(
+                                (e) => (e as num).toDouble(),
+                              ),
+                            ),
+
+                            purchaseData: List<double>.from(
+                              (dashboardData?["PurchaseActivity"] ?? []).map(
+                                (e) => (e as num).toDouble(),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        /// 🔥 INCOME EXPENSE GRAPH
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+
+                          child: IncomeExpenseChart(
+                            months: List<String>.from(
+                              dashboardData?["months"] ?? [],
+                            ),
+
+                            incomeData: List<double>.from(
+                              (dashboardData?["Income"] ?? []).map(
+                                (e) => (e as num).toDouble(),
+                              ),
+                            ),
+
+                            expenseData: List<double>.from(
+                              (dashboardData?["Expense"] ?? []).map(
+                                (e) => (e as num).toDouble(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
             ],
           ),
         ),

@@ -1,12 +1,12 @@
 import 'package:billcare/api/auth_helper.dart';
-import 'package:billcare/admin/challan/list_challan_in.dart';
+// import 'package:billcare/admin/challan/list_challan_in.dart';
 import 'package:billcare/admin/clients/details.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:billcare/home/new_dashboard.dart';
 import 'package:billcare/admin/report/item_stock.dart';
 import 'package:billcare/admin/report/state_wise_report.dart';
 import 'package:billcare/admin/sale_approval/approve_sale.dart';
-import 'package:billcare/admin/settings/chnage_password.dart';
+import 'package:billcare/admin/settings/change_password.dart';
 import 'package:billcare/admin/report/low_stock.dart';
 import 'package:billcare/admin/setup/department/department.dart';
 import 'package:billcare/admin/setup/designation/designation.dart';
@@ -25,7 +25,7 @@ import 'package:billcare/screens/login.dart';
 import 'package:billcare/admin/setup/session.dart';
 import 'package:billcare/transaction/transaction.dart';
 import 'package:flutter/material.dart';
-// import 'package:billcare/home/dashboard_screen.dart';
+
 import 'package:billcare/admin/items/itemspage.dart';
 import 'package:billcare/admin/sale/manage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -322,26 +322,7 @@ class LeftSidebar extends StatelessWidget {
                       );
                     },
                   ),
-                  // _drawerItem(
-                  //   Icons.receipt_long,
-                  //   'Order',
-                  //   onTap: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (_) => PurchaseOrderPage()),
-                  //     );
-                  //   },
-                  // ),
-                  // _drawerItem(
-                  //   Icons.money_off,
-                  //   'Return',
-                  //   onTap: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (_) => PurchaseReturnPage()),
-                  //     );
-                  //   },
-                  // ),
+               
                 ],
               ),
 
@@ -447,48 +428,7 @@ class LeftSidebar extends StatelessWidget {
                   ),
                 ],
               ),
-              ExpansionTile(
-                leading: const Icon(Icons.receipt_long), // better for Challan
-                title: const Text('Challan'),
-                tilePadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 0,
-                ),
-                visualDensity: const VisualDensity(vertical: -4),
-                children: [
-                  _drawerItem(
-                    Icons.download, // inward / receive
-                    'Challan In',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ChallanInListPage()),
-                      );
-                    },
-                  ),
-                  // _drawerItem(
-                  //   Icons.upload, // outward / send
-                  //   'Challan Out',
-                  //   onTap: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (_) => SessionPage()),
-                  //     );
-                  //   },
-                  // ),
-                  // _drawerItem(
-                  //   Icons.bar_chart, // report / analytics
-                  //   'Challan Report',
-                  //   onTap: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (_) => DesignationPage()),
-                  //     );
-                  //   },
-                  // ),
-                ],
-              ),
-
+            
               // 11. Reports
               ExpansionTile(
                 leading: const Icon(Icons.insert_chart),

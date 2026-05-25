@@ -26,7 +26,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
 
   double outstanding = 0;
   String lastAmount = "";
-  String lastDate = "";
+
   bool isSuccess = true;
   bool isLoading = true;
   int _selectedIndex = 0;
@@ -61,13 +61,9 @@ class _SalesDashboardState extends State<SalesDashboard> {
     if (res != null && res is Map<String, dynamic>) {
       outstanding = double.tryParse(res['due'].toString()) ?? 0;
 
-      final lastPay = res['last_pay'] ?? {};
+      lastAmount = res['received'].toString();
 
-      lastAmount = lastPay['amount']?.toString() ?? "";
-
-      lastDate = lastPay['date']?.toString() ?? "";
-
-      isSuccess = lastAmount.isNotEmpty && lastAmount != "0";
+      isSuccess = lastAmount != "0";
     } else {
       debugPrint("Dashboard API failed");
     }
@@ -200,7 +196,6 @@ class _SalesDashboardState extends State<SalesDashboard> {
                     child: _modernCard(
                       title: "Today Received",
                       value: isSuccess ? "₹$lastAmount" : "No Payment",
-
                       color: isSuccess ? Colors.green : Colors.red,
                       icon: isSuccess ? Icons.check_circle : Icons.cancel,
                     ),
