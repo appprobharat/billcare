@@ -242,6 +242,11 @@ class _DashboardPageState extends State<DashboardPage> {
             // 🔹 COMPANY DROPDOWN (LEFT)
             PopupMenuButton<Map<String, dynamic>>(
               onSelected: (value) {
+                setState(() {
+                  companyName = value['Name'];
+                  selectedCompany = value;
+                });
+
                 setCompany(value['id']);
               },
               itemBuilder: (context) {
@@ -279,6 +284,10 @@ class _DashboardPageState extends State<DashboardPage> {
             // 🔹 SESSION DROPDOWN (RIGHT)
             PopupMenuButton<Map<String, dynamic>>(
               onSelected: (value) {
+                setState(() {
+                  selectedSession = value;
+                });
+
                 setSession(value['id']);
               },
               itemBuilder: (context) {
@@ -289,7 +298,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   );
                 }).toList();
               },
-
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,

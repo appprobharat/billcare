@@ -216,54 +216,27 @@ class _SalesManagePageState extends State<SalesManagePage> {
     }
   }
 
-  Future<void> _shareSalePdf(Map<String, dynamic> sale) async {
-    if (_authToken == null || _authToken!.isEmpty) {
-      _showSnackbar("Authentication failed.", Colors.red);
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Generating and saving PDF for ${sale['RefNo'] ?? 'Sale'}...',
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    // Set loading state to prevent multiple clicks
-    if (mounted) setState(() => _isLoading = true);
-
+  Future<void> _shareSalePdf(Map<String, dynamic> sale, RenderBox? box) async {
     try {
       final String filePath = await PdfService.generateAndSavePdf(
         authToken: _authToken!,
         sale: sale,
       );
 
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
       if (filePath.isNotEmpty) {
         await Share.shareXFiles(
           [XFile(filePath)],
           subject: 'Invoice: ${sale['RefNo'] ?? 'N/A'}',
           text: 'Please find the sale invoice attached.',
-        );
-        _showSnackbar('Invoice shared successfully!', Colors.green);
-      } else {
-        _showSnackbar(
-          'Failed to generate or save PDF for sharing.',
-          Colors.red,
+          sharePositionOrigin: box != null
+              ? box.localToGlobal(Offset.zero) & box.size
+              : const Rect.fromLTWH(0, 0, 1, 1),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      _showSnackbar('Error sharing PDF: $e', Colors.red);
-      print('Error sharing PDF: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint("Error sharing PDF: $e");
     }
   }
-
   // --- UI Widgets Extraction ---
 
   Widget _buildDateField(String label, TextEditingController controller) {
@@ -579,18 +552,36 @@ class _SalesManagePageState extends State<SalesManagePage> {
                               ),
                             ),
                             // Share Icon (Share PDF)
-                            IconButton(
-                              onPressed: () => _shareSalePdf(sale),
-                              icon: const Icon(
-                                Icons.share,
-                                size: 20,
-                                color: Colors.blueGrey,
-                              ),
-                              padding: EdgeInsets.zero,
-                              tooltip: 'Share Invoice PDF',
-                              constraints: BoxConstraints.tight(
-                                const Size(32, 32),
-                              ),
+                            // IconButton(
+                            //   onPressed: () => _shareSalePdf(sale),
+                            //   icon: const Icon(
+                            //     Icons.share,
+                            //     size: 20,
+                            //     color: Colors.blueGrey,
+                            //   ),
+                            //   padding: EdgeInsets.zero,
+                            //   tooltip: 'Share Invoice PDF',
+                            //   constraints: BoxConstraints.tight(
+                            //     const Size(32, 32),
+                            //   ),
+                            // ),
+                            Builder(
+                              builder: (shareContext) {
+                                return IconButton(
+                                  onPressed: () {
+                                    final RenderBox? box =
+                                        shareContext.findRenderObject()
+                                            as RenderBox?;
+
+                                    _shareSalePdf(sale, box);
+                                  },
+                                  icon: const Icon(
+                                    Icons.share,
+                                    size: 20,
+                                    color: Colors.blueGrey,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),

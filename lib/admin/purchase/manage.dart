@@ -177,7 +177,10 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
     }
   }
 
-  Future<void> _sharePurchasePdf(Map<String, dynamic> purchase) async {
+  Future<void> _sharePurchasePdf(
+    Map<String, dynamic> purchase,
+    RenderBox? box,
+  ) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -187,7 +190,6 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
       ),
     );
 
-    // Set loading state to prevent multiple clicks
     if (mounted) setState(() => _isLoading = true);
 
     try {
@@ -198,12 +200,16 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      if (filePath!.isNotEmpty) {
+      if (filePath != null && filePath.isNotEmpty) {
         await Share.shareXFiles(
           [XFile(filePath)],
           subject: 'Invoice: ${purchase['RefNo'] ?? 'N/A'}',
           text: 'Please find the purchase invoice attached.',
+          sharePositionOrigin: box != null
+              ? box.localToGlobal(Offset.zero) & box.size
+              : const Rect.fromLTWH(0, 0, 1, 1),
         );
+
         _showSnackbar('Invoice shared successfully!', Colors.green);
       } else {
         _showSnackbar(
@@ -213,10 +219,14 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
       _showSnackbar('Error sharing PDF: $e', Colors.red);
-      print('Error sharing PDF: $e');
+
+      debugPrint('Error sharing PDF: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -535,18 +545,23 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
                               ),
                             ),
                             // Share Icon (Share PDF)
-                            IconButton(
-                              onPressed: () => _sharePurchasePdf(purchase),
-                              icon: const Icon(
-                                Icons.share,
-                                size: 20,
-                                color: Colors.blueGrey,
-                              ),
-                              padding: EdgeInsets.zero,
-                              tooltip: 'Share Invoice PDF',
-                              constraints: BoxConstraints.tight(
-                                const Size(32, 32),
-                              ),
+                            Builder(
+                              builder: (shareContext) {
+                                return IconButton(
+                                  onPressed: () {
+                                    final RenderBox? box =
+                                        shareContext.findRenderObject()
+                                            as RenderBox?;
+
+                                    _sharePurchasePdf(purchase, box);
+                                  },
+                                  icon: const Icon(
+                                    Icons.share,
+                                    size: 20,
+                                    color: Colors.blueGrey,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
