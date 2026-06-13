@@ -59,7 +59,8 @@
 
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>This app does not actively use your location. This permission description is included because some system libraries may reference location-related APIs.</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
