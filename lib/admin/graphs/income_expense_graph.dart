@@ -65,7 +65,7 @@ class IncomeExpenseChart extends StatelessWidget {
 
                     drawVerticalLine: false,
 
-                    horizontalInterval: _getMaxY() / 5,
+                    horizontalInterval: _getInterval(),
                   ),
 
                   borderData: FlBorderData(show: false),
@@ -89,7 +89,7 @@ class IncomeExpenseChart extends StatelessWidget {
 
                         reservedSize: 42,
 
-                        interval: _getMaxY() / 5,
+                        interval: _getInterval(),
 
                         getTitlesWidget: (value, meta) {
                           return Padding(
@@ -118,22 +118,20 @@ class IncomeExpenseChart extends StatelessWidget {
                         getTitlesWidget: (value, meta) {
                           int index = value.toInt();
 
-                          if (index >= 0 && index < months.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-
-                              child: Text(
-                                months[index],
-
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            );
+                          if (index < 0 || index >= months.length) {
+                            return const SizedBox();
                           }
 
-                          return const SizedBox();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              months[index],
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ),
@@ -142,33 +140,24 @@ class IncomeExpenseChart extends StatelessWidget {
                   /// 🔥 BARS
                   barGroups: List.generate(
                     incomeData.length,
-
                     (i) => BarChartGroupData(
                       x: i,
-
                       barsSpace: 4,
-
                       barRods: [
-                        /// INCOME
+                        /// Income
                         BarChartRodData(
-                          toY: incomeData[i].abs(),
-
-                          width: 7,
-
+                          toY: incomeData[i].isFinite ? incomeData[i].abs() : 0,
                           color: Colors.green,
-
-                          borderRadius: BorderRadius.circular(4),
+                          width: 7,
                         ),
 
-                        /// EXPENSE
+                        /// Expense
                         BarChartRodData(
-                          toY: expenseData[i].abs(),
-
-                          width: 7,
-
+                          toY: expenseData[i].isFinite
+                              ? expenseData[i].abs()
+                              : 0,
                           color: Colors.red,
-
-                          borderRadius: BorderRadius.circular(4),
+                          width: 7,
                         ),
                       ],
                     ),
@@ -193,6 +182,10 @@ class IncomeExpenseChart extends StatelessWidget {
 
     double maxValue = maxIncome > maxExpense ? maxIncome : maxExpense;
 
+    if (maxValue <= 0) {
+      return 5;
+    }
+
     return maxValue + (maxValue * 0.2);
   }
 
@@ -201,6 +194,20 @@ class IncomeExpenseChart extends StatelessWidget {
       return "${(value / 1000).toStringAsFixed(0)}k";
     }
 
+    if (value.isNaN || value.isInfinite) {
+      return "0";
+    }
+
     return value.toInt().toString();
+  }
+
+  double _getInterval() {
+    double interval = _getMaxY() / 5;
+
+    if (interval <= 0 || interval.isNaN || interval.isInfinite) {
+      return 1;
+    }
+
+    return interval;
   }
 }

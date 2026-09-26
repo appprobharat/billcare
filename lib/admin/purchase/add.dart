@@ -255,7 +255,6 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
       });
     }
 
-    // 4. API Call (Post New Purchase)
     try {
       final newPurchaseData = await ApiService.postPurchaseData(requestBody);
 
@@ -264,9 +263,6 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
       if (newPurchaseData != null &&
           newPurchaseData.containsKey('status') &&
           newPurchaseData['status'] == true) {
-        // Check for the actual 'status: true'
-
-        // Now execute the successful actions:
         await _clearBilledItemsFromPrefs();
         if (mounted) {
           _showSnackbar("Purchase saved successfully! 🎉", Colors.green);
@@ -285,6 +281,7 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
       if (mounted) {
         _showSnackbar("Error while saving purchase: $e", Colors.red);
       }
+      return;
     }
 
     if (mounted) {
@@ -811,247 +808,253 @@ class _AddNewPurchasePageState extends State<AddNewPurchasePage> {
           ),
         ],
       ),
-       body: _isLoadingClients
+      body: _isLoadingClients
           ? const Center(child: CircularProgressIndicator())
-          :SafeArea(
-        child: GestureDetector(
-          onTap: () {
-            FocusScope.of(context).unfocus();
-            if (mounted) {
-              setState(() {
-                _showClientList = false;
-              });
-            }
-          },
-          child: Stack(
-            children: [
-              SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+          : SafeArea(
+              child: GestureDetector(
+                onTap: () {
+                  FocusScope.of(context).unfocus();
+                  if (mounted) {
+                    setState(() {
+                      _showClientList = false;
+                    });
+                  }
+                },
+                child: Stack(
                   children: [
-                    // Date Field
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _compactField(
-                            controller: _dateController,
-                            label: "Date",
-                            readOnly: true,
-                            onTap: _pickDate,
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Date Field
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _compactField(
+                                  controller: _dateController,
+                                  label: "Date",
+                                  readOnly: true,
+                                  onTap: _pickDate,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
 
-                    _compactField(
-                      controller: _customerController,
-                      hint: "Client Name | Mobile | State (Search)",
-                      focusNode: _customerFocusNode,
-                      autofocus: false,
-                      enabled: _allowClientSelection,
-                    ),
+                          _compactField(
+                            controller: _customerController,
+                            hint: "Client Name | Mobile | State (Search)",
+                            focusNode: _customerFocusNode,
+                            autofocus: false,
+                            enabled: _allowClientSelection,
+                          ),
 
-                    // Add Items Button
-                    OutlinedButton.icon(
-                      onPressed: _navigateToAddItems,
-                      icon: const Icon(Icons.add),
-                      label: const Text("Add Items"),
-                    ),
+                          // Add Items Button
+                          OutlinedButton.icon(
+                            onPressed: _navigateToAddItems,
+                            icon: const Icon(Icons.add),
+                            label: const Text("Add Items"),
+                          ),
 
-                    _buildBilledItemsCard(),
+                          _buildBilledItemsCard(),
 
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          children: [
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                _buildSummaryRow(
-                                  "Total Amount",
-                                  _priceController.text,
-                                  isBold: true,
-                                ),
-                              ],
-                            ),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Checkbox(
-                                      value: _isPaid,
-                                      onChanged: (val) {
-                                        setState(() {
-                                          _isPaid = val!;
-                                          if (!_isPaid) {
-                                            _receivedController.clear();
-                                            _selectedReceiptMode = null;
-                                            _remarkController.clear();
-                                          } else {
-                                            if (_receivedController
-                                                    .text
-                                                    .isEmpty ||
-                                                _receivedController.text ==
-                                                    '0.00') {
-                                              _receivedController.text =
-                                                  _priceController.text;
-                                            }
-                                          }
-                                        });
-                                        _calculateBalance();
-                                      },
-                                    ),
-                                    const Text(
-                                      "Paid",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w500,
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                children: [
+                                  Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      _buildSummaryRow(
+                                        "Total Amount",
+                                        _priceController.text,
+                                        isBold: true,
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const Spacer(),
-                                if (_isPaid)
-                                  SizedBox(
-                                    width: 100,
-                                    child: TextFormField(
-                                      controller: _receivedController,
-                                      keyboardType: TextInputType.number,
-                                      textAlign: TextAlign.right,
+                                    ],
+                                  ),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Checkbox(
+                                            value: _isPaid,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _isPaid = val!;
+                                                if (!_isPaid) {
+                                                  _receivedController.clear();
+                                                  _selectedReceiptMode = null;
+                                                  _remarkController.clear();
+                                                } else {
+                                                  if (_receivedController
+                                                          .text
+                                                          .isEmpty ||
+                                                      _receivedController
+                                                              .text ==
+                                                          '0.00') {
+                                                    _receivedController.text =
+                                                        _priceController.text;
+                                                  }
+                                                }
+                                              });
+                                              _calculateBalance();
+                                            },
+                                          ),
+                                          const Text(
+                                            "Paid",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const Spacer(),
+                                      if (_isPaid)
+                                        SizedBox(
+                                          width: 100,
+                                          child: TextFormField(
+                                            controller: _receivedController,
+                                            keyboardType: TextInputType.number,
+                                            textAlign: TextAlign.right,
+                                            decoration: const InputDecoration(
+                                              labelText: "Amount",
+                                              prefixText: '₹ ',
+                                              border: OutlineInputBorder(),
+                                              isDense: true,
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    vertical: 8,
+                                                    horizontal: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  if (_isPaid) ...[
+                                    const SizedBox(height: 10),
+                                    DropdownButtonFormField<String>(
                                       decoration: const InputDecoration(
-                                        labelText: "Amount",
-                                        prefixText: '₹ ',
+                                        labelText: "Receipt Mode",
                                         border: OutlineInputBorder(),
                                         isDense: true,
-                                        contentPadding: EdgeInsets.symmetric(
-                                          vertical: 8,
-                                          horizontal: 8,
+                                      ),
+                                      value: _selectedReceiptMode,
+                                      hint: const Text("Select Payment Method"),
+                                      items: _receiptModes.map((String mode) {
+                                        return DropdownMenuItem<String>(
+                                          value: mode,
+                                          child: Text(mode),
+                                        );
+                                      }).toList(),
+                                      onChanged: (String? newValue) {
+                                        setState(() {
+                                          _selectedReceiptMode = newValue;
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 10),
+
+                                    TextFormField(
+                                      controller: _remarkController,
+                                      decoration: const InputDecoration(
+                                        labelText: "Remark (Optional)",
+                                        border: OutlineInputBorder(),
+                                        isDense: true,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+
+                                  // Balance Due
+                                  _buildSummaryRow(
+                                    "Balance Due",
+                                    _balanceDue.toStringAsFixed(2),
+                                    isBold: true,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            // बटन और लोडर को केन्द्रित करने के लिए `Center` विजेट का उपयोग करें यदि लोडर बटन से छोटा है
+                            child: Center(
+                              child:
+                                  _isLoading // यह जाँच करें कि लोडिंग चल रही है या नहीं
+                                  ? const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 15,
+                                      ), // ElevatedButton के समान पैडिंग रखें
+                                      child: SizedBox(
+                                        height: 24, // लोडर का आकार
+                                        width: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 3.0, // लोडर की मोटाई
+                                        ),
+                                      ),
+                                    )
+                                  : ElevatedButton.icon(
+                                      onPressed: _saveFormData,
+                                      icon: const Icon(Icons.save),
+                                      label: const Text("Save"),
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 10,
+                                          horizontal: 20,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                              ],
                             ),
-                            if (_isPaid) ...[
-                              const SizedBox(height: 10),
-                              DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(
-                                  labelText: "Receipt Mode",
-                                  border: OutlineInputBorder(),
-                                  isDense: true,
-                                ),
-                                value: _selectedReceiptMode,
-                                hint: const Text("Select Payment Method"),
-                                items: _receiptModes.map((String mode) {
-                                  return DropdownMenuItem<String>(
-                                    value: mode,
-                                    child: Text(mode),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedReceiptMode = newValue;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 10),
+                          ),
+                          const SizedBox(height: 30),
+                        ],
+                      ),
+                    ),
 
-                              TextFormField(
-                                controller: _remarkController,
-                                decoration: const InputDecoration(
-                                  labelText: "Remark (Optional)",
-                                  border: OutlineInputBorder(),
-                                  isDense: true,
-                                ),
+                    // Client List Overlay
+                    if (_showClientList && _filteredClients.isNotEmpty)
+                      Positioned(
+                        top: 130,
+                        left: 16,
+                        right: 16,
+                        child: Container(
+                          constraints: const BoxConstraints(maxHeight: 250),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
                               ),
-                              const SizedBox(height: 10),
                             ],
-
-                            // Balance Due
-                            _buildSummaryRow(
-                              "Balance Due",
-                              _balanceDue.toStringAsFixed(2),
-                              isBold: true,
-                            ),
-                          ],
+                          ),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _filteredClients.length,
+                            itemBuilder: (context, index) {
+                              return _clientTile(_filteredClients[index]);
+                            },
+                          ),
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      // बटन और लोडर को केन्द्रित करने के लिए `Center` विजेट का उपयोग करें यदि लोडर बटन से छोटा है
-                      child: Center(
-                        child:
-                            _isLoading // यह जाँच करें कि लोडिंग चल रही है या नहीं
-                            ? const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 15,
-                                ), // ElevatedButton के समान पैडिंग रखें
-                                child: SizedBox(
-                                  height: 24, // लोडर का आकार
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 3.0, // लोडर की मोटाई
-                                  ),
-                                ),
-                              )
-                            : ElevatedButton.icon(
-                                onPressed: _saveFormData,
-                                icon: const Icon(Icons.save),
-                                label: const Text("Save"),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 10,
-                                    horizontal: 20,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
                   ],
                 ),
               ),
-
-              // Client List Overlay
-              if (_showClientList && _filteredClients.isNotEmpty)
-                Positioned(
-                  top: 130,
-                  left: 16,
-                  right: 16,
-                  child: Container(
-                    constraints: const BoxConstraints(maxHeight: 250),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _filteredClients.length,
-                      itemBuilder: (context, index) {
-                        return _clientTile(_filteredClients[index]);
-                      },
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 

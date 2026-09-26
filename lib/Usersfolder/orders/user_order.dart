@@ -464,76 +464,83 @@ class _UserOrderPageState extends State<UserOrderPage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               // 🔹 LEFT SIDE (More Details)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  /// 🔥 NAME + CATEGORY
-                                  RichText(
-                                    text: TextSpan(
-                                      text: item["Name"] ?? "",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: Colors.black,
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: item["Category"] != null
-                                              ? " (${item["Category"]})"
-                                              : "",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    /// 🔥 NAME + CATEGORY
+                                    RichText(
+                                      text: TextSpan(
+                                        text: item["Name"] ?? "",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Colors.black,
+                                        ),
+                                        children: [
+                                          TextSpan(
+                                            text: item["Category"] != null
+                                                ? " (${item["Category"]})"
+                                                : "",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 7),
+
+                                    /// 🔥 PRICE | STOCK | GST
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              "₹${item["SalePrice"] ?? "0"} | ",
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+
+                                            Text(
+                                              "Stock: ${item["Stock"] ?? "0"}",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+
+                                                /// 🔥 STOCK COLOR
+                                                color:
+                                                    (int.tryParse(
+                                                              item["Stock"]
+                                                                      ?.toString() ??
+                                                                  "0",
+                                                            ) ??
+                                                            0) >
+                                                        0
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                              ),
+                                            ),
+                                            Text(
+                                              " | GST: ${(double.tryParse(item["gst"]?.toString() ?? "0") ?? 0).toStringAsFixed(0)}%",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                  ),
-
-                                  const SizedBox(height: 7),
-
-                                  /// 🔥 PRICE | STOCK | GST
-                                  Row(
-                                    children: [
-                                      Text(
-                                        "₹${item["SalePrice"] ?? "0"}   |  ",
-                                        style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-
-                                      Text(
-                                        "Stock: ${item["Stock"] ?? "0"}",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-
-                                          /// 🔥 STOCK COLOR
-                                          color:
-                                              (int.tryParse(
-                                                        item["Stock"]
-                                                                ?.toString() ??
-                                                            "0",
-                                                      ) ??
-                                                      0) >
-                                                  0
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                      ),
-                                      Text(
-                                        "   |   GST: ${(double.tryParse(item["gst"]?.toString() ?? "0") ?? 0).toStringAsFixed(0)}%",
-                                        style: TextStyle(
-                                          fontSize: 12,
-
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
 
                               SizedBox(

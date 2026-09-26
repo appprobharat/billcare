@@ -56,6 +56,15 @@ class _ManageReceiptPageState extends State<ManageReceiptPage> {
     return token;
   }
 
+  double get _totalReceiptAmount {
+    return _filteredReceipts.fold<double>(
+      0,
+      (sum, item) =>
+          sum + (double.tryParse(item["Amount"]?.toString() ?? "0") ?? 0),
+    );
+  }
+
+  int get _receiptCount => _filteredReceipts.length;
   Future<void> _downloadAndOpenFile(String url) async {
     try {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -496,8 +505,63 @@ class _ManageReceiptPageState extends State<ManageReceiptPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 5),
 
+              const SizedBox(height: 8),
+
+              if (_filteredReceipts.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xff2563EB), Color(0xff3B82F6)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.receipt_long_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+
+                      Text(
+                        "$_receiptCount Receipts",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.18),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          "₹ ${NumberFormat('#,##0.00').format(_totalReceiptAmount)}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 5),
               // Receipts List
               Expanded(
                 child: _isLoading

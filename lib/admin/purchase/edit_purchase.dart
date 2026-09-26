@@ -68,31 +68,48 @@ class _EditPurchasePageState extends State<EditPurchasePage> {
   // --- API and Data Handling ---
 
   Future<void> _fetchPurchaseDataForEdit(int purchaseId) async {
+    debugPrint('================ FETCH PURCHASE START ================');
+    debugPrint('Purchase ID: $purchaseId');
+
     try {
       await _clearBilledItemsFromPrefs();
 
+      debugPrint("🔵 FETCH PURCHASE ID => $purchaseId");
+
       final purchaseData = await ApiService.fetchPurchaseForEdit(purchaseId);
 
-      print("🟢 DEBUG: Raw purchase data => $purchaseData");
+      debugPrint("🟢 FETCH PURCHASE RESULT => $purchaseData");
+      debugPrint('API RESPONSE TYPE: ${purchaseData.runtimeType}');
+      debugPrint('API RESPONSE: $purchaseData');
 
       if (mounted && purchaseData != null) {
+        debugPrint('Purchase data received. Populating form...');
         _populateFormData(purchaseData);
       } else if (mounted) {
+        debugPrint('ERROR: Purchase data is NULL');
+
         _showSnackbar(
           "Failed to load purchase data for ID: $purchaseId",
           Colors.red,
         );
+
         Navigator.pop(context);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ FETCH PURCHASE ERROR: $e');
+      debugPrint('❌ ERROR TYPE: ${e.runtimeType}');
+      debugPrint('❌ STACK TRACE:\n$stackTrace');
+
       if (mounted) {
         _showSnackbar("Error loading purchase: $e", Colors.red);
       }
     }
+
+    debugPrint('================ FETCH PURCHASE END ==================');
   }
 
   void _populateFormData(Map<String, dynamic> data) {
-    print("🟡 DEBUG: Populating form with data => ${jsonEncode(data)}");
+    debugPrint("🟡 DEBUG: Populating form with data => ${jsonEncode(data)}");
     Map<String, dynamic> tempBilledItemsData = {};
 
     // 1. Parse Items

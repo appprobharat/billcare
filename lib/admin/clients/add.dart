@@ -99,7 +99,7 @@ class _AddClientPageState extends State<AddClientPage> {
       setState(() => _isLoadingData = false);
     } catch (e) {
       setState(() => _isLoadingData = false);
-      print("Error: $e");
+  
     }
   }
 

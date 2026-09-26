@@ -251,7 +251,7 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
     final response = await ApiService.postRequest(
       endpoint: "/saleman/get_item",
     );
-    debugPrint("🛒 FIRST ITEM = ${response.first}");
+
     if (response != null) {
       allProducts = List<Map<String, dynamic>>.from(
         response.map(
@@ -451,242 +451,241 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          title: Text(widget.isEdit ? "Edit Order" : "Order Now"),
-          centerTitle: true,
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height,
-              child: Stack(
-                children: [
-                  Column(
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: AppBar(
+        title: Text(widget.isEdit ? "Edit Order" : "Order Now"),
+        centerTitle: true,
+      ),
+      body: SafeArea(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  child: Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        child: Row(
-                          children: [
-                            /// ITEM SEARCH
-                            Expanded(
-                              child: SizedBox(
-                                height: 45,
-                                child: TextField(
-                                  controller: itemController,
-                                  onChanged: (_) => filterItems(),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: "Item Name",
-                                    hintStyle: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade500,
-                                    ),
-
-                                    prefixIcon: Icon(
-                                      Icons.search,
-                                      size: 18,
-                                      color: Colors.grey.shade700,
-                                    ),
-
-                                    filled: true,
-                                    fillColor: Colors.white,
-
-                                    isDense: true,
-
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 11,
-                                    ),
-
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.2,
-                                      ),
-                                    ),
-
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(
-                                        color: Theme.of(context).primaryColor,
-                                        width: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(width: 10),
-
-                            /// CATEGORY SEARCH
-                            Expanded(
-                              child: SizedBox(
-                                height: 45,
-                                child: TextField(
-                                  controller: categoryController,
-                                  onChanged: (_) => filterItems(),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: "Category Name",
-                                    hintStyle: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade500,
-                                    ),
-
-                                    prefixIcon: Icon(
-                                      Icons.category_outlined,
-                                      size: 18,
-                                      color: Colors.grey.shade700,
-                                    ),
-
-                                    filled: true,
-                                    fillColor: Colors.white,
-
-                                    isDense: true,
-
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 11,
-                                    ),
-
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(
-                                        color: Colors.grey.shade300,
-                                        width: 1.2,
-                                      ),
-                                    ),
-
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: BorderSide(
-                                        color: Theme.of(context).primaryColor,
-                                        width: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.all(5),
-                        child: _compactField(
-                          controller: _customerController,
-                          hint: "Client Name | Mobile | State (Search)",
-                          focusNode: _customerFocusNode,
-                          autofocus: false,
-                          enabled: _allowClientSelection,
-                        ),
-                      ),
-                      if (_showClientList)
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 10),
-                          constraints: const BoxConstraints(maxHeight: 220),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black12, blurRadius: 6),
-                            ],
-                          ),
-                          child: _isLoadingClients
-                              ? const Center(child: CircularProgressIndicator())
-                              : _filteredClients.isEmpty
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: Text("No Client Found"),
-                                )
-                              : ListView.builder(
-                                  shrinkWrap: true,
-                                  itemCount: _filteredClients.length,
-                                  itemBuilder: (_, i) =>
-                                      _clientTile(_filteredClients[i]),
-                                ),
-                        ),
-                      // 🔹 PRODUCT GRID
+                      /// ITEM SEARCH
                       Expanded(
-                        child: isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : filteredProducts.isEmpty
-                            ? const Center(child: Text("No Items Found"))
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(10),
-                                itemCount: filteredProducts.length,
-                                itemBuilder: (_, i) {
-                                  final item = filteredProducts[i];
+                        child: SizedBox(
+                          height: 45,
+                          child: TextField(
+                            controller: itemController,
+                            onChanged: (_) => filterItems(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: "Item Name",
+                              hintStyle: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade500,
+                              ),
 
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(14),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black12,
-                                          blurRadius: 6,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                              prefixIcon: Icon(
+                                Icons.search,
+                                size: 18,
+                                color: Colors.grey.shade700,
+                              ),
+
+                              filled: true,
+                              fillColor: Colors.white,
+
+                              isDense: true,
+
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 11,
+                              ),
+
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.2,
+                                ),
+                              ),
+
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).primaryColor,
+                                  width: 1.4,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+
+                      /// CATEGORY SEARCH
+                      Expanded(
+                        child: SizedBox(
+                          height: 45,
+                          child: TextField(
+                            controller: categoryController,
+                            onChanged: (_) => filterItems(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: "Category Name",
+                              hintStyle: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade500,
+                              ),
+
+                              prefixIcon: Icon(
+                                Icons.category_outlined,
+                                size: 18,
+                                color: Colors.grey.shade700,
+                              ),
+
+                              filled: true,
+                              fillColor: Colors.white,
+
+                              isDense: true,
+
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 11,
+                              ),
+
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.2,
+                                ),
+                              ),
+
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).primaryColor,
+                                  width: 1.4,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.all(5),
+                  child: _compactField(
+                    controller: _customerController,
+                    hint: "Client Name | Mobile | State (Search)",
+                    focusNode: _customerFocusNode,
+                    autofocus: false,
+                    enabled: _allowClientSelection,
+                  ),
+                ),
+                // if (_showClientList)
+                //   Container(
+                //     margin: const EdgeInsets.symmetric(horizontal: 10),
+                //     constraints: const BoxConstraints(maxHeight: 220),
+                //     decoration: BoxDecoration(
+                //       color: Colors.white,
+                //       borderRadius: BorderRadius.circular(10),
+                //       boxShadow: const [
+                //         BoxShadow(color: Colors.black12, blurRadius: 6),
+                //       ],
+                //     ),
+                //     child: _isLoadingClients
+                //         ? const Center(child: CircularProgressIndicator())
+                //         : _filteredClients.isEmpty
+                //         ? const Padding(
+                //             padding: EdgeInsets.all(12),
+                //             child: Text("No Client Found"),
+                //           )
+                //         : ListView.builder(
+                //             shrinkWrap: true,
+                //             itemCount: _filteredClients.length,
+                //             itemBuilder: (_, i) =>
+                //                 _clientTile(_filteredClients[i]),
+                //           ),
+                //   ),
+                // 🔹 PRODUCT GRID
+                Expanded(
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : filteredProducts.isEmpty
+                      ? const Center(child: Text("No Items Found"))
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(10),
+                          itemCount: filteredProducts.length,
+                          itemBuilder: (_, i) {
+                            final item = filteredProducts[i];
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  // 🔹 LEFT SIDE (More Details)
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        // 🔹 LEFT SIDE (More Details)
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            /// 🔥 NAME + CATEGORY
-                                            RichText(
-                                              text: TextSpan(
-                                                text: item["Name"] ?? "",
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 15,
-                                                  color: Colors.black,
-                                                ),
-                                                children: [
-                                                  TextSpan(
-                                                    text:
-                                                        item["Category"] != null
-                                                        ? " (${item["Category"]})"
-                                                        : "",
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      fontSize: 12,
-                                                      color: Colors.grey[600],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
+                                        /// 🔥 NAME + CATEGORY
+                                        RichText(
+                                          text: TextSpan(
+                                            text: item["Name"] ?? "",
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: Colors.black,
                                             ),
+                                            children: [
+                                              TextSpan(
+                                                text: item["Category"] != null
+                                                    ? " (${item["Category"]})"
+                                                    : "",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
 
-                                            const SizedBox(height: 7),
+                                        const SizedBox(height: 7),
 
-                                            /// 🔥 PRICE | STOCK | GST
+                                        /// 🔥 PRICE | STOCK | GST
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 4,
+                                          children: [
                                             Row(
                                               children: [
                                                 Text(
-                                                  "₹${item["SalePrice"] ?? "0"}   |  ",
+                                                  "₹${item["SalePrice"] ?? "0"} |  ",
                                                   style: const TextStyle(
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w600,
@@ -713,7 +712,7 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
                                                   ),
                                                 ),
                                                 Text(
-                                                  "   |   GST: ${(double.tryParse(item["gst"]?.toString() ?? "0") ?? 0).toStringAsFixed(0)}%",
+                                                  " | GST: ${(double.tryParse(item["gst"]?.toString() ?? "0") ?? 0).toStringAsFixed(0)}%",
                                                   style: TextStyle(
                                                     fontSize: 12,
 
@@ -724,122 +723,148 @@ class _SalesOrderPageState extends State<SalesOrderPage> {
                                             ),
                                           ],
                                         ),
-
-                                        SizedBox(
-                                          height: 32,
-                                          width: 90,
-                                          child: item["qty"] == 0
-                                              ? ElevatedButton(
-                                                  style: ElevatedButton.styleFrom(
-                                                    padding: EdgeInsets.zero,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  onPressed: () =>
-                                                      increaseQty(i),
-                                                  child: const Text(
-                                                    "Add",
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                )
-                                              : Container(
-                                                  decoration: BoxDecoration(
-                                                    border: Border.all(
-                                                      color: Colors.blue,
-                                                    ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceEvenly,
-                                                    children: [
-                                                      GestureDetector(
-                                                        onTap: () =>
-                                                            decreaseQty(i),
-                                                        child: const Icon(
-                                                          Icons.remove,
-                                                          size: 16,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        "${item["qty"]}",
-                                                        style: const TextStyle(
-                                                          fontSize: 13,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                      GestureDetector(
-                                                        onTap: () =>
-                                                            increaseQty(i),
-                                                        child: const Icon(
-                                                          Icons.add,
-                                                          size: 16,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                        ),
                                       ],
                                     ),
-                                  );
-                                },
-                              ),
-                      ),
+                                  ),
 
-                      // 🔹 SUMMARY CARD
-                      Container(
-                        margin: const EdgeInsets.all(10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: const [BoxShadow(color: Colors.black12)],
+                                  SizedBox(
+                                    height: 32,
+                                    width: 90,
+                                    child: item["qty"] == 0
+                                        ? ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            onPressed: () => increaseQty(i),
+                                            child: const Text(
+                                              "Add",
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                          )
+                                        : Container(
+                                            decoration: BoxDecoration(
+                                              border: Border.all(
+                                                color: Colors.blue,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                GestureDetector(
+                                                  onTap: () => decreaseQty(i),
+                                                  child: const Icon(
+                                                    Icons.remove,
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "${item["qty"]}",
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                GestureDetector(
+                                                  onTap: () => increaseQty(i),
+                                                  child: const Icon(
+                                                    Icons.add,
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                        child: Column(
-                          children: [
-                            _row("Subtotal", subtotal),
-                            _row("GST", gst),
-                            _row("Total", total, bold: true),
+                ),
 
-                            const SizedBox(height: 10),
+                // 🔹 SUMMARY CARD
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    margin: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [BoxShadow(color: Colors.black12)],
+                    ),
+                    child: Column(
+                      children: [
+                        _row("Subtotal", subtotal),
+                        _row("GST", gst),
+                        _row("Total", total, bold: true),
 
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  submitOrder(
-                                    isEdit: widget.isEdit,
-                                    saleId: widget.saleId,
-                                  );
-                                },
-                                child: Text(
-                                  widget.isEdit
-                                      ? "Update Order"
-                                      : "Submit Order",
-                                ),
-                              ),
+                        const SizedBox(height: 10),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              submitOrder(
+                                isEdit: widget.isEdit,
+                                saleId: widget.saleId,
+                              );
+                            },
+                            child: Text(
+                              widget.isEdit ? "Update Order" : "Submit Order",
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            if (_showClientList) _buildClientDropdown(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClientDropdown() {
+    return Positioned(
+      top: 105, // Agar niche/uper lage to baad me adjust karenge
+      left: 10,
+      right: 10,
+      child: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 250),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
           ),
+          child: _isLoadingClients
+              ? const SizedBox(
+                  height: 80,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              : _filteredClients.isEmpty
+              ? const SizedBox(
+                  height: 60,
+                  child: Center(child: Text("No Client Found")),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: _filteredClients.length,
+                  itemBuilder: (_, i) => _clientTile(_filteredClients[i]),
+                ),
         ),
       ),
     );

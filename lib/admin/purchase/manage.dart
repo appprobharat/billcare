@@ -40,10 +40,14 @@ class PurchaseManagePage extends StatefulWidget {
   const PurchaseManagePage({super.key});
 
   @override
-  State<PurchaseManagePage> createState() => _PurchaseManagePageState();
+  State<PurchaseManagePage> createState() => PurchaseManagePageState();
 }
 
-class _PurchaseManagePageState extends State<PurchaseManagePage> {
+class PurchaseManagePageState extends State<PurchaseManagePage> {
+  Future<void> refreshList() async {
+    await _searchPurchases();
+  }
+
   // --- Controllers & State Variables ---
   final _formKey = GlobalKey<FormState>();
   final TextEditingController fromDateController = TextEditingController();
@@ -82,6 +86,12 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
     toDateController.text = DateFormat('dd-MM-yyyy').format(now);
   }
 
+  double get _totalPurchasesAmount {
+    return _filteredPurchasesList.fold<double>(
+      0.0,
+      (sum, item) => sum + (double.tryParse(item['Amount'].toString()) ?? 0.0),
+    );
+  }
   // --- API & Data Handling ---
 
   Future<void> _searchPurchases({bool shouldClearClientFilter = true}) async {
@@ -190,7 +200,9 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
       ),
     );
 
-    if (mounted) setState(() => _isLoading = true);
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       final String? filePath = await PdfService.generateAndSavePdf(
@@ -198,31 +210,45 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
         authToken: '',
       );
 
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       if (filePath != null && filePath.isNotEmpty) {
+        // IMPORTANT: Check RenderBox after async PDF generation
+        Rect shareRect = const Rect.fromLTWH(0, 0, 1, 1);
+
+        if (box != null && box.attached) {
+          shareRect = box.localToGlobal(Offset.zero) & box.size;
+        }
+
         await Share.shareXFiles(
           [XFile(filePath)],
           subject: 'Invoice: ${purchase['RefNo'] ?? 'N/A'}',
           text: 'Please find the purchase invoice attached.',
-          sharePositionOrigin: box != null
-              ? box.localToGlobal(Offset.zero) & box.size
-              : const Rect.fromLTWH(0, 0, 1, 1),
+          sharePositionOrigin: shareRect,
         );
 
-        _showSnackbar('Invoice shared successfully!', Colors.green);
+        if (mounted) {
+          _showSnackbar('Invoice shared successfully!', Colors.green);
+        }
       } else {
-        _showSnackbar(
-          'Failed to generate or save PDF for sharing.',
-          Colors.red,
-        );
+        if (mounted) {
+          _showSnackbar(
+            'Failed to generate or save PDF for sharing.',
+            Colors.red,
+          );
+        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    } catch (e, stackTrace) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      _showSnackbar('Error sharing PDF: $e', Colors.red);
+        _showSnackbar('Error sharing PDF: $e', Colors.red);
+      }
 
-      debugPrint('Error sharing PDF: $e');
+      debugPrint('❌ Error sharing PDF: $e');
+      debugPrint('❌ StackTrace: $stackTrace');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -352,40 +378,92 @@ class _PurchaseManagePageState extends State<PurchaseManagePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        flex: 5,
-                        child: _buildDateField("From Date", fromDateController),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: _buildDateField("From Date", fromDateController),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 5,
+                          child: _buildDateField("To Date", toDateController),
+                        ),
+                        const SizedBox(width: 8),
+        
+                        _buildSearchButton(),
+                      ],
+                    ),
+        
+                    const SizedBox(height: 10),
+                    if (_purchasesList.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xff2563EB), Color(0xff3B82F6)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(.18),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.payments_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Total Purchases",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              "₹ ${NumberFormat('#,##0.00').format(_totalPurchasesAmount)}",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 5,
-                        child: _buildDateField("To Date", toDateController),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildSearchButton(),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  if (_purchasesList.isNotEmpty) _buildClientFilterField(),
-                ],
+                    const SizedBox(height: 8),
+                    if (_purchasesList.isNotEmpty) _buildClientFilterField(),
+                  ],
+                ),
               ),
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(child: _buildPurchasesList()),
-        ],
+            const Divider(height: 1),
+            Expanded(child: _buildPurchasesList()),
+          ],
+        ),
       ),
     );
   }

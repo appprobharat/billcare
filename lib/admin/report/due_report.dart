@@ -33,11 +33,17 @@ class _ReportDuePageState extends State<ReportDuePage> {
     if (res != null && res is List) {
       dueList = res.where((item) {
         double due = double.tryParse(item['closing_balance'].toString()) ?? 0;
-
         return due != 0;
       }).toList();
 
       filteredDueList = List.from(dueList);
+
+      filteredDueList.sort((a, b) {
+        double aNum = double.tryParse(a['closing_balance'].toString()) ?? 0;
+        double bNum = double.tryParse(b['closing_balance'].toString()) ?? 0;
+
+        return bNum.compareTo(aNum);
+      });
     }
 
     setState(() => isLoading = false);
@@ -51,18 +57,22 @@ class _ReportDuePageState extends State<ReportDuePage> {
       isAscending = true;
     }
 
-    dueList.sort((a, b) {
+    filteredDueList.sort((a, b) {
       dynamic aVal = a[key];
       dynamic bVal = b[key];
 
-      /// STRING SORT
+      // String sorting
       if (key == "name") {
         return isAscending
-            ? aVal.toString().compareTo(bVal.toString())
-            : bVal.toString().compareTo(aVal.toString());
+            ? aVal.toString().toLowerCase().compareTo(
+                bVal.toString().toLowerCase(),
+              )
+            : bVal.toString().toLowerCase().compareTo(
+                aVal.toString().toLowerCase(),
+              );
       }
 
-      /// NUMBER SORT
+      // Numeric sorting
       double aNum = double.tryParse(aVal.toString()) ?? 0;
       double bNum = double.tryParse(bVal.toString()) ?? 0;
 

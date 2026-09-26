@@ -145,22 +145,119 @@ class _CategoryItemsListPageState extends State<CategoryItemsListPage> {
         padding: const EdgeInsets.all(10),
         child: Column(
           children: [
-            // Search Box
-            TextField(
-              controller: searchCtrl,
-              onChanged: (_) => _applyFilter(),
-              decoration: InputDecoration(
-                labelText: "Search by Name/Unit",
-                prefixIcon: const Icon(Icons.search, size: 20),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xffFF6A00), Color(0xffEE0979)],
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 20,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.deepOrange.withOpacity(.18),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.inventory_2_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          "Total Items",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "${filteredItems.length}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.18),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.bar_chart_rounded,
+                          color: Colors.white,
+                          size: 15,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          "Items",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 10),
+            // Search Box
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: searchCtrl,
+                onChanged: (_) => _applyFilter(),
+                decoration: InputDecoration(
+                  hintText: "Search Items...",
+                  prefixIcon: Icon(Icons.search, color: Colors.orange),
+                  suffixIcon: Icon(Icons.tune, color: Colors.grey),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
             ),
@@ -175,124 +272,133 @@ class _CategoryItemsListPageState extends State<CategoryItemsListPage> {
                   : ListView.builder(
                       itemCount: filteredItems.length,
                       itemBuilder: (context, index) {
-                        final cardColor = cardColors[index % cardColors.length];
                         final item = filteredItems[index];
-                        return Card(
-                          elevation: 4,
-                          color: cardColor,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 15),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 15,
+                                offset: Offset(0, 8),
+                              ),
+                            ],
+                            border: Border.all(color: Colors.grey.shade200),
                           ),
+
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      item["name"],
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
+                                    CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: Colors.orange.shade50,
+                                      child: const Icon(
+                                        Icons.inventory_2_rounded,
+                                        color: Colors.deepOrange,
+                                        size: 18,
                                       ),
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: item["type"] == "Income"
-                                            ? Colors.green.shade100
-                                            : Colors.red.shade100,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        item["type"],
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: item["type"] == "Income"
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 5),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Unit: ${item["unit"]}",
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          "₹ ${item["price"]}",
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        GestureDetector(
-                                          onTap: () {
-                                            showModalBottomSheet(
-                                              context: context,
-                                              isScrollControlled: true,
-                                              shape:
-                                                  const RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.vertical(
-                                                          top: Radius.circular(
-                                                            25,
-                                                          ),
-                                                        ),
-                                                  ),
-                                              builder: (_) =>
-                                                  EditItemBottomSheet(
-                                                    itemId: item["id"]
-                                                        .toString(),
-                                                    initialType:
-                                                        (item["type"] ?? "")
-                                                            .toString(),
-                                                    initialName:
-                                                        (item["name"] ?? "")
-                                                            .toString(),
-                                                    initialPrice:
-                                                        (item["price"] ?? "")
-                                                            .toString(),
-                                                    initialUnit:
-                                                        (item["unit"] ?? "")
-                                                            .toString(),
-                                                  ),
-                                            ).then((updated) {
-                                              if (updated == true) {
-                                                fetchItems(); // <-- Your reload function
-                                              }
-                                            });
-                                          },
 
-                                          child: const Icon(
-                                            Icons.edit,
-                                            size: 18,
+                                    const SizedBox(width: 10),
+
+                                    Expanded(
+                                      child: Text(
+                                        item["name"],
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 6),
+
+                                    _buildChip(
+                                      item["unit"],
+                                      Colors.grey.shade100,
+                                      Colors.grey.shade700,
+                                    ),
+
+                                    const SizedBox(width: 6),
+
+                                    _buildChip(
+                                      item["type"],
+                                      item["type"] == "Income"
+                                          ? Colors.green.shade50
+                                          : Colors.red.shade50,
+                                      item["type"] == "Income"
+                                          ? Colors.green
+                                          : Colors.red,
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    Text(
+                                      "₹${item["price"]}",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: Colors.deepOrange,
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    InkWell(
+                                      onTap: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          shape: const RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.vertical(
+                                              top: Radius.circular(25),
+                                            ),
+                                          ),
+                                          builder: (_) => EditItemBottomSheet(
+                                            itemId: item["id"].toString(),
+                                            initialType: (item["type"] ?? "")
+                                                .toString(),
+                                            initialName: (item["name"] ?? "")
+                                                .toString(),
+                                            initialPrice: (item["price"] ?? "")
+                                                .toString(),
+                                            initialUnit: (item["unit"] ?? "")
+                                                .toString(),
+                                          ),
+                                        ).then((updated) {
+                                          if (updated == true) {
+                                            fetchItems(); // <-- Your reload function
+                                          }
+                                        });
+                                      },
+
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade50,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
                                         ),
-                                      ],
+                                        child: const Icon(
+                                          Icons.edit_rounded,
+                                          size: 16,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
+                                const SizedBox(width: 8),
                               ],
                             ),
                           ),
@@ -301,6 +407,24 @@ class _CategoryItemsListPageState extends State<CategoryItemsListPage> {
                     ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip(String text, Color bg, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
       ),
     );

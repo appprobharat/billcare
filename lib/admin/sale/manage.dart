@@ -41,10 +41,10 @@ class SalesManagePage extends StatefulWidget {
   const SalesManagePage({super.key});
 
   @override
-  State<SalesManagePage> createState() => _SalesManagePageState();
+  State<SalesManagePage> createState() => SalesManagePageState();
 }
 
-class _SalesManagePageState extends State<SalesManagePage> {
+class SalesManagePageState extends State<SalesManagePage> {
   // --- Controllers & State Variables ---
   final _formKey = GlobalKey<FormState>();
   final TextEditingController fromDateController = TextEditingController();
@@ -161,6 +161,17 @@ class _SalesManagePageState extends State<SalesManagePage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  double get _totalSalesAmount {
+    return _filteredSalesList.fold<double>(
+      0.0,
+      (sum, item) => sum + (double.tryParse(item['Amount'].toString()) ?? 0.0),
+    );
+  }
+
+  Future<void> refreshList() async {
+    await _searchSales();
   }
 
   String _formatName(String name) {
@@ -359,40 +370,94 @@ class _SalesManagePageState extends State<SalesManagePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        flex: 5,
-                        child: _buildDateField("From Date", fromDateController),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          flex: 5,
+                          child: _buildDateField(
+                            "From Date",
+                            fromDateController,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 5,
+                          child: _buildDateField("To Date", toDateController),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildSearchButton(),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    if (_salesList.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xff2563EB), Color(0xff3B82F6)],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(.18),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.payments_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "Total Sales",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              "₹ ${NumberFormat('#,##0.00').format(_totalSalesAmount)}",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 5,
-                        child: _buildDateField("To Date", toDateController),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildSearchButton(),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  if (_salesList.isNotEmpty) _buildClientFilterField(),
-                ],
+                    const SizedBox(height: 10),
+                    if (_salesList.isNotEmpty) _buildClientFilterField(),
+                  ],
+                ),
               ),
             ),
-          ),
-          const Divider(height: 1),
-          Expanded(child: _buildSalesList()),
-        ],
+            const Divider(height: 1),
+            Expanded(child: _buildSalesList()),
+          ],
+        ),
       ),
     );
   }

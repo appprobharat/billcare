@@ -62,7 +62,7 @@ class SalesPurchaseChart extends StatelessWidget {
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    horizontalInterval: _getMaxY() / 5,
+                    horizontalInterval: _getInterval(),
                   ),
 
                   borderData: FlBorderData(show: false),
@@ -85,7 +85,7 @@ class SalesPurchaseChart extends StatelessWidget {
 
                         reservedSize: 42,
 
-                        interval: _getMaxY() / 5,
+                        interval: _getInterval(),
 
                         getTitlesWidget: (value, meta) {
                           return Padding(
@@ -146,24 +146,18 @@ class SalesPurchaseChart extends StatelessWidget {
                       barRods: [
                         /// SALES
                         BarChartRodData(
-                          toY: salesData[i].abs(),
-
+                          toY: salesData[i].isFinite ? salesData[i].abs() : 0,
                           color: Colors.green,
-
                           width: 7,
-
-                          borderRadius: BorderRadius.circular(4),
                         ),
 
                         /// PURCHASE
                         BarChartRodData(
-                          toY: purchaseData[i].abs(),
-
+                          toY: purchaseData[i].isFinite
+                              ? purchaseData[i].abs()
+                              : 0,
                           color: Colors.red,
-
                           width: 7,
-
-                          borderRadius: BorderRadius.circular(4),
                         ),
                       ],
                     ),
@@ -196,6 +190,22 @@ class SalesPurchaseChart extends StatelessWidget {
 
     double maxValue = maxSales > maxPurchase ? maxSales : maxPurchase;
 
+    // SAFE DEFAULT
+    if (maxValue <= 0) {
+      return 5;
+    }
+
     return maxValue + (maxValue * 0.2);
+  }
+
+  double _getInterval() {
+    double interval = _getMaxY() / 5;
+
+    // NEVER RETURN 0
+    if (interval <= 0 || interval.isNaN || interval.isInfinite) {
+      return 1;
+    }
+
+    return interval;
   }
 }

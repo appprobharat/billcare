@@ -352,23 +352,30 @@ class ApiService {
   static Future<Map<String, dynamic>?> fetchPurchaseForEdit(
     int purchaseId,
   ) async {
-    final url = Uri.parse("$baseUrl/purchase/edit");
+    final url = Uri.parse('$baseUrl/purchase/edit');
 
-    final res = await http.post(
-      url,
-      headers: await authHeaders(), // 🔥 token inside
-      body: jsonEncode({"PurchaseId": purchaseId}),
-    );
+    try {
+      final response = await http.post(
+        url,
+        headers: await authHeaders(contentType: 'application/json'),
+        body: jsonEncode({'PurchaseId': purchaseId}),
+      );
 
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body);
+      debugPrint("📥 Purchase Details Status: ${response.statusCode}");
+      debugPrint("📥 Purchase Details Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        await AuthStorage.logout();
+        return null;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      debugPrint("❌ fetchPurchaseForEdit error: $e");
+      return null;
     }
-
-    if (res.statusCode == 401) {
-      await AuthStorage.logout();
-    }
-
-    throw Exception("Failed to fetch purchase");
   }
 
   static Future<Map<String, dynamic>?> fetchSaleDetails(int saleId) async {
@@ -387,7 +394,6 @@ class ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else if (response.statusCode == 401) {
-        // 🔐 Token expired / invalid
         await AuthStorage.logout();
         return null;
       } else {
@@ -410,7 +416,6 @@ class ApiService {
         Uri.parse("$baseUrl/client/store"),
       );
 
-      // ✅ Auth header from SecureStorage
       final headers = await authHeaders();
       request.headers.addAll(headers);
 

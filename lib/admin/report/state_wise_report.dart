@@ -48,6 +48,8 @@ class _StateWiseReportPageState extends State<StateWiseReportPage> {
     );
     if (res != null && res is List) {
       data = res;
+    } else {
+      data = [];
     }
 
     setState(() => isLoading = false);
@@ -103,17 +105,23 @@ class _StateWiseReportPageState extends State<StateWiseReportPage> {
     }
   }
 
-  int get totalSales =>
-      data.fold(0, (sum, e) => sum + (e["no_of_sales"] as int));
+  int get totalSales => data.fold(
+    0,
+    (sum, e) => sum + (int.tryParse("${e["no_of_sales"]}") ?? 0),
+  );
 
   int get totalSaleVal =>
-      data.fold(0, (sum, e) => sum + (e["sale_value"] as int));
+      data.fold(0, (sum, e) => sum + (int.tryParse("${e["sale_value"]}") ?? 0));
 
-  int get totalPurchase =>
-      data.fold(0, (sum, e) => sum + (e["no_of_purchase"] as int));
+  int get totalPurchase => data.fold(
+    0,
+    (sum, e) => sum + (int.tryParse("${e["no_of_purchase"]}") ?? 0),
+  );
 
-  int get totalPurVal =>
-      data.fold(0, (sum, e) => sum + (e["purchase_value"] as int));
+  int get totalPurVal => data.fold(
+    0,
+    (sum, e) => sum + (int.tryParse("${e["purchase_value"]}") ?? 0),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -174,6 +182,13 @@ class _StateWiseReportPageState extends State<StateWiseReportPage> {
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
+                  : data.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No Data Found",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: data.length,
                       itemBuilder: (context, i) {
@@ -190,19 +205,22 @@ class _StateWiseReportPageState extends State<StateWiseReportPage> {
                           ),
                           child: Row(
                             children: [
-                              Expanded(flex: 3, child: Text(d["state"])),
+                              Expanded(
+                                flex: 3,
+                                child: Text("${d["state"] ?? ""}"),
+                              ),
 
                               Expanded(
                                 flex: 1,
                                 child: Text(
-                                  "${d["no_of_sales"]}",
+                                  "${d["no_of_sales"] ?? 0}",
                                   textAlign: TextAlign.right,
                                 ),
                               ),
                               Expanded(
                                 flex: 2, // 👈 reduced
                                 child: Text(
-                                  "${d["sale_value"]}",
+                                  "${d["sale_value"] ?? 0}",
                                   textAlign: TextAlign.right,
                                 ),
                               ),
@@ -210,14 +228,14 @@ class _StateWiseReportPageState extends State<StateWiseReportPage> {
                               Expanded(
                                 flex: 2,
                                 child: Text(
-                                  "${d["sale_value"]}",
+                                  "${d["no_of_purchase"] ?? 0}",
                                   textAlign: TextAlign.right,
                                 ),
                               ),
                               Expanded(
                                 flex: 2,
                                 child: Text(
-                                  "${d["purchase_value"]}",
+                                  "${d["purchase_value"] ?? 0}",
                                   textAlign: TextAlign.right,
                                 ),
                               ),

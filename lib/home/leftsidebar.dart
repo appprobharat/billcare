@@ -1,8 +1,7 @@
 import 'package:billcare/api/auth_helper.dart';
-// import 'package:billcare/admin/challan/list_challan_in.dart';
 import 'package:billcare/admin/clients/details.dart';
 import 'package:billcare/api/api_service.dart';
-import 'package:billcare/home/new_dashboard.dart';
+import 'package:billcare/home/admin_dashboard.dart';
 import 'package:billcare/admin/report/item_stock.dart';
 import 'package:billcare/admin/report/state_wise_report.dart';
 import 'package:billcare/admin/sale_approval/approve_sale.dart';
@@ -23,9 +22,8 @@ import 'package:billcare/admin/report/due_report.dart';
 import 'package:billcare/admin/report/ledger.dart';
 import 'package:billcare/screens/login.dart';
 import 'package:billcare/admin/setup/session.dart';
-import 'package:billcare/transaction/transaction.dart';
+import 'package:billcare/admin/report/transaction.dart';
 import 'package:flutter/material.dart';
-
 import 'package:billcare/admin/items/itemspage.dart';
 import 'package:billcare/admin/sale/manage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -137,6 +135,7 @@ class LeftSidebar extends StatelessWidget {
               _drawerItem(
                 Icons.home,
                 "Dashboard",
+                color: Colors.indigo,
                 onTap: () {
                   Navigator.pushReplacement(
                     context,
@@ -169,6 +168,7 @@ class LeftSidebar extends StatelessWidget {
               _drawerItem(
                 Icons.person,
                 'Client',
+                color: Colors.blue,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -179,6 +179,7 @@ class LeftSidebar extends StatelessWidget {
               _drawerItem(
                 Icons.group,
                 'Employee',
+                color: Colors.teal,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -186,9 +187,11 @@ class LeftSidebar extends StatelessWidget {
                   );
                 },
               ),
+
               // 3. Items
               _drawerItem(
                 Icons.list_alt,
+                color: Colors.orange,
                 'Items',
                 onTap: () {
                   Navigator.push(
@@ -200,6 +203,7 @@ class LeftSidebar extends StatelessWidget {
               _drawerItem(
                 Icons.fact_check_outlined,
                 'Approve Sale',
+                color: Colors.green,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -208,8 +212,23 @@ class LeftSidebar extends StatelessWidget {
                 },
               ),
               ExpansionTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Setup'),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.settings, color: Colors.red),
+                ),
+                title: const Text(
+                  'Setup',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+
                 tilePadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 0,
@@ -219,6 +238,7 @@ class LeftSidebar extends StatelessWidget {
                   _drawerItem(
                     Icons.category,
                     'Category',
+                    color: Colors.deepPurple,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -229,6 +249,7 @@ class LeftSidebar extends StatelessWidget {
                   _drawerItem(
                     Icons.event,
                     'Session',
+                    color: Colors.teal,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -239,6 +260,7 @@ class LeftSidebar extends StatelessWidget {
                   _drawerItem(
                     Icons.badge,
                     'Designation',
+                    color: Colors.teal,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -249,6 +271,7 @@ class LeftSidebar extends StatelessWidget {
                   _drawerItem(
                     Icons.work,
                     'Department',
+                    color: Colors.teal,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -258,11 +281,25 @@ class LeftSidebar extends StatelessWidget {
                   ),
                 ],
               ),
-
+              SizedBox(height: 10),
               // 4. Sales
               ExpansionTile(
-                leading: const Icon(Icons.receipt),
-                title: const Text('Sales'),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.receipt, color: Colors.deepPurple),
+                ),
+                title: const Text(
+                  'Sales',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
                 tilePadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 0,
@@ -279,33 +316,27 @@ class LeftSidebar extends StatelessWidget {
                       );
                     },
                   ),
-                  // _drawerItem(
-                  //   Icons.receipt_long,
-                  //   'Order',
-                  //   onTap: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (_) => SalesOrderPage()),
-                  //     );
-                  //   },
-                  // ),
-                  // _drawerItem(
-                  //   Icons.keyboard_return,
-                  //   'Return',
-                  //   onTap: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(builder: (_) => ReturnPage()),
-                  //     );
-                  //   },
-                  // ),
                 ],
               ),
-
+              SizedBox(height: 10),
               // 5. Purchase
               ExpansionTile(
-                leading: const Icon(Icons.shopping_cart),
-                title: const Text('Purchase'),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.cyan.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.shopping_cart, color: Colors.cyan),
+                ),
+                title: const Text(
+                  'Purchase',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
                 tilePadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 0,
@@ -322,7 +353,6 @@ class LeftSidebar extends StatelessWidget {
                       );
                     },
                   ),
-               
                 ],
               ),
 
@@ -342,6 +372,7 @@ class LeftSidebar extends StatelessWidget {
               _drawerItem(
                 Icons.payments,
                 'Payment',
+                color: Colors.pink,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -353,6 +384,7 @@ class LeftSidebar extends StatelessWidget {
               // 8. Receipt
               _drawerItem(
                 Icons.receipt_long,
+
                 'Receipt',
                 onTap: () {
                   Navigator.push(
@@ -365,6 +397,7 @@ class LeftSidebar extends StatelessWidget {
               // 9. Quick Receipt
               _drawerItem(
                 Icons.flash_on,
+                color: Colors.amber,
                 'Quick Receipt',
                 onTap: () {
                   Navigator.push(
@@ -376,8 +409,22 @@ class LeftSidebar extends StatelessWidget {
 
               // 10. Income
               ExpansionTile(
-                leading: const Icon(Icons.attach_money),
-                title: const Text('Inc/Exp'),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.attach_money_outlined,
+                    color: Colors.green,
+                  ),
+                ),
+                title: const Text(
+                  'Inc/Exp',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                ),
                 tilePadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 0,
@@ -428,11 +475,26 @@ class LeftSidebar extends StatelessWidget {
                   ),
                 ],
               ),
-            
+              SizedBox(height: 10),
               // 11. Reports
               ExpansionTile(
-                leading: const Icon(Icons.insert_chart),
-                title: const Text('Reports'),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.insert_chart_outlined,
+                    color: Colors.amber,
+                  ),
+                ),
+
+                title: const Text(
+                  'Reports',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                ),
                 tilePadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 0,
@@ -452,6 +514,7 @@ class LeftSidebar extends StatelessWidget {
                   _drawerItem(
                     Icons.assessment,
                     'State-wise Report',
+                    color: Colors.deepPurple,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -466,6 +529,7 @@ class LeftSidebar extends StatelessWidget {
                   _drawerItem(
                     Icons.swap_horiz,
                     'Txn Report',
+                    color: Colors.green,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -476,6 +540,7 @@ class LeftSidebar extends StatelessWidget {
                   _drawerItem(
                     Icons.schedule,
                     'Due Report',
+                    color: Colors.purpleAccent,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -490,15 +555,14 @@ class LeftSidebar extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => ItemStockReportPage(),
-                        ),
+                        MaterialPageRoute(builder: (_) => ItemStockPage()),
                       );
                     },
                   ),
                   _drawerItem(
                     Icons.warning_amber_rounded,
                     'Low Stock',
+                    color: Colors.brown,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -508,11 +572,28 @@ class LeftSidebar extends StatelessWidget {
                   ),
                 ],
               ),
-
+              SizedBox(height: 10),
               // 12. Settings
               ExpansionTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('Settings'),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.settings_suggest_rounded,
+                    color: Colors.blue,
+                  ),
+                ),
+                title: const Text(
+                  'Settings',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
                 tilePadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 0,
@@ -572,15 +653,52 @@ class LeftSidebar extends StatelessWidget {
     );
   }
 
-  Widget _drawerItem(IconData icon, String title, {VoidCallback? onTap}) {
+  Widget _drawerItem(
+    IconData icon,
+    String title, {
+    Color color = Colors.blue,
+    VoidCallback? onTap,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.black),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-        visualDensity: const VisualDensity(horizontal: 0, vertical: -3),
-        title: Text(title),
-        onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 21),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

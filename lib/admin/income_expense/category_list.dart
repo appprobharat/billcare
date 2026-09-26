@@ -106,6 +106,13 @@ class _CategoryListPageState extends State<CategoryListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final totalCategories = filteredList.length;
+
+    final incomeCount = filteredList.where((e) => e["type"] == "Income").length;
+
+    final expenseCount = filteredList
+        .where((e) => e["type"] == "Expenses")
+        .length;
     return Scaffold(
       extendBody: true,
 
@@ -161,34 +168,189 @@ class _CategoryListPageState extends State<CategoryListPage> {
                 padding: const EdgeInsets.all(8),
                 child: Column(
                   children: [
-                    // 🔍 Search Box
-                    TextField(
-                      controller: searchCtrl,
-                      onChanged: (query) => _applyFilter(),
-                      decoration: InputDecoration(
-                        labelText: "Search by Name",
-                        labelStyle: const TextStyle(fontSize: 14),
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: BorderSide.none,
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF1E3A8A),
-                            width: 1.0,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.orange.withOpacity(.25),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
                           ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.category_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+
+                          const SizedBox(width: 15),
+
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "$totalCategories Categories",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(.18),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        "🟢 $incomeCount Income",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(.18),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        "🔴 $expenseCount Expense",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // 🔍 Search Box
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(.06),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: searchCtrl,
+                        onChanged: (_) => _applyFilter(),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 12.0,
-                          horizontal: 20.0,
+                        decoration: InputDecoration(
+                          hintText: "Search Categories",
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 14,
+                          ),
+
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            color: Colors.deepOrange,
+                          ),
+
+                          suffixIcon: searchCtrl.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    size: 20,
+                                  ),
+                                  onPressed: () {
+                                    searchCtrl.clear();
+                                    _applyFilter();
+                                  },
+                                )
+                              : null,
+
+                          filled: true,
+                          fillColor: Colors.white,
+
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(
+                              color: Colors.deepOrange,
+                              width: 1.2,
+                            ),
+                          ),
+
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                       ),
                     ),
-
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, left: 14),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "${filteredList.length} Categories Found",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 10),
 
                     // LIST VIEW
@@ -197,27 +359,65 @@ class _CategoryListPageState extends State<CategoryListPage> {
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: filteredList.length,
                       itemBuilder: (context, index) {
-                        final cardColor = cardColors[index % cardColors.length];
                         final item = filteredList[index];
 
-                        return Card(
-                          elevation: 4,
-                          color: cardColor,
-                          margin: const EdgeInsets.only(bottom: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border(
+                              left: BorderSide(
+                                color: item["type"] == "Income"
+                                    ? Colors.green
+                                    : Colors.red,
+                                width: 5,
+                              ),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
-                          child: Container(
-                            padding: const EdgeInsets.all(15),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
+                                Container(
+                                  height: 42,
+                                  width: 42,
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.category_rounded,
+                                    color: Colors.deepOrange,
+                                    size: 22,
+                                  ),
+                                ),
+
                                 Expanded(
-                                  child: Text(
-                                    item["categoryName"]!,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Text(
+                                      item["categoryName"]!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -225,22 +425,38 @@ class _CategoryListPageState extends State<CategoryListPage> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
-                                    vertical: 4,
+                                    vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
                                     color: item["type"] == "Income"
-                                        ? Colors.green.shade100
-                                        : Colors.red.shade100,
-                                    borderRadius: BorderRadius.circular(5),
+                                        ? Colors.green.shade50
+                                        : Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: Text(
-                                    item["type"]!,
-                                    style: TextStyle(
-                                      color: item["type"] == "Income"
-                                          ? Colors.green
-                                          : Colors.red,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        item["type"] == "Income"
+                                            ? Icons.arrow_upward_rounded
+                                            : Icons.arrow_downward_rounded,
+                                        size: 12,
+                                        color: item["type"] == "Income"
+                                            ? Colors.green
+                                            : Colors.red,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        item["type"]!,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: item["type"] == "Income"
+                                              ? Colors.green
+                                              : Colors.red,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -270,7 +486,7 @@ class _CategoryListPageState extends State<CategoryListPage> {
                                     print("🟩 Category Item: $item");
 
                                     if (result != null) {
-                                      fetchCategories(); // Refresh list after update
+                                      fetchCategories();
                                     }
                                   },
                                   child: const Icon(

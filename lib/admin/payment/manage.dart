@@ -24,6 +24,13 @@ class _ManagePaymentPageState extends State<ManagePaymentPage> {
   String selectedType = "Supplier";
   final List<String> _types = ["Supplier", "Party", "Employee"];
   bool _isLoading = false;
+  double get _totalPaymentAmount {
+    return _filteredPayments.fold<double>(
+      0.0,
+      (sum, item) => sum + (double.tryParse(item['Amount'].toString()) ?? 0.0),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -380,7 +387,54 @@ class _ManagePaymentPageState extends State<ManagePaymentPage> {
                 ),
               ),
               const SizedBox(height: 8),
-
+              if (_payments.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xff2563EB), Color(0xff3B82F6)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.18),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.payments_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "Total Payments",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        "₹ ${NumberFormat('#,##0.00').format(_totalPaymentAmount)}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 8),
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
@@ -404,175 +458,180 @@ class _ManagePaymentPageState extends State<ManagePaymentPage> {
                                   ? payment["Type"].toString()
                                   : selectedType,
                             ),
-                            child: Card(
-                              margin: const EdgeInsets.symmetric(vertical: 2),
-                              elevation: 1,
-                              child: Padding(
-                                padding: const EdgeInsets.all(6.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(
-                                          flex: 7,
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "Ref No: ${payment["Ref_No"]}",
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 14,
-                                                  color: Color(0xFF1E3A8A),
-                                                ),
-                                              ),
-                                              Text(
-                                                "Name: ${payment["Name"]}",
-                                                style: const TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
-                                              ),
-
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    "Contact: ${payment["ContactNo"]}",
-                                                    style: const TextStyle(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: Colors.black87,
-                                                    ),
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.print_rounded,
-                                                          size: 20,
-                                                          color: Color(
-                                                            0xFF1E3A8A,
-                                                          ),
-                                                        ),
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                        onPressed: () {
-                                                          Navigator.of(
-                                                            context,
-                                                          ).push(
-                                                            MaterialPageRoute(
-                                                              builder: (_) => PaymentPrintPage(
-                                                                paymentId:
-                                                                    payment['id'],
-                                                                paymentType:
-                                                                    payment['Type']
-                                                                        ?.toString() ??
-                                                                    selectedType,
-                                                              ),
-                                                            ),
-                                                          );
-                                                        },
-                                                      ),
-                                                      IconButton(
-                                                        icon: const Icon(
-                                                          Icons.share,
-                                                          size: 20,
-                                                          color: Color(
-                                                            0xFF1E3A8A,
-                                                          ),
-                                                        ),
-                                                        padding:
-                                                            EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                        onPressed: () {
-                                                          Navigator.of(
-                                                            context,
-                                                          ).push(
-                                                            MaterialPageRoute(
-                                                              builder: (_) => PaymentPrintPage(
-                                                                paymentId:
-                                                                    payment['id'],
-                                                                paymentType:
-                                                                    payment['Type']
-                                                                        ?.toString() ??
-                                                                    selectedType,
-                                                              ),
-                                                            ),
-                                                          );
-                                                        },
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                              if (hasRemark)
+                            child: SafeArea(
+                              child: Card(
+                                margin: const EdgeInsets.symmetric(vertical: 2),
+                                elevation: 1,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            flex: 7,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
                                                 Text(
-                                                  "Remark: $remarkText",
+                                                  "Ref No: ${payment["Ref_No"]}",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 14,
+                                                    color: Color(0xFF1E3A8A),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "Name: ${payment["Name"]}",
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                   maxLines: 1,
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.orange,
+                                                ),
+
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      "Contact: ${payment["ContactNo"]}",
+                                                      style: const TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.black87,
+                                                      ),
+                                                    ),
+                                                    Row(
+                                                      children: [
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                            Icons.print_rounded,
+                                                            size: 20,
+                                                            color: Color(
+                                                              0xFF1E3A8A,
+                                                            ),
+                                                          ),
+                                                          padding:
+                                                              EdgeInsets.zero,
+                                                          constraints:
+                                                              const BoxConstraints(),
+                                                          onPressed: () {
+                                                            Navigator.of(
+                                                              context,
+                                                            ).push(
+                                                              MaterialPageRoute(
+                                                                builder: (_) => PaymentPrintPage(
+                                                                  paymentId:
+                                                                      payment['id'],
+                                                                  paymentType:
+                                                                      payment['Type']
+                                                                          ?.toString() ??
+                                                                      selectedType,
+                                                                ),
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                            Icons.share,
+                                                            size: 20,
+                                                            color: Color(
+                                                              0xFF1E3A8A,
+                                                            ),
+                                                          ),
+                                                          padding:
+                                                              EdgeInsets.zero,
+                                                          constraints:
+                                                              const BoxConstraints(),
+                                                          onPressed: () {
+                                                            Navigator.of(
+                                                              context,
+                                                            ).push(
+                                                              MaterialPageRoute(
+                                                                builder: (_) => PaymentPrintPage(
+                                                                  paymentId:
+                                                                      payment['id'],
+                                                                  paymentType:
+                                                                      payment['Type']
+                                                                          ?.toString() ??
+                                                                      selectedType,
+                                                                ),
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                                if (hasRemark)
+                                                  Text(
+                                                    "Remark: $remarkText",
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                    style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.orange,
+                                                    ),
                                                   ),
-                                                ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
-                                        ),
 
-                                        Expanded(
-                                          flex: 2,
+                                          Expanded(
+                                            flex: 2,
 
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                _formatApiDate(
-                                                  payment["Date"]?.toString(),
-                                                ),
-                                                style: const TextStyle(
-                                                  color: Colors.black54,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-
-                                              Text(
-                                                "₹${payment["Amount"]}",
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.green,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              if (discount != "0")
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.end,
+                                              children: [
                                                 Text(
-                                                  "Disc: ₹$discount",
+                                                  _formatApiDate(
+                                                    payment["Date"]?.toString(),
+                                                  ),
                                                   style: const TextStyle(
-                                                    color: Colors.red,
+                                                    color: Colors.black54,
                                                     fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
-                                            ],
+
+                                                Text(
+                                                  "₹${payment["Amount"]}",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.green,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                                if (discount != "0")
+                                                  Text(
+                                                    "Disc: ₹$discount",
+                                                    style: const TextStyle(
+                                                      color: Colors.red,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

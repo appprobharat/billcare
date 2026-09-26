@@ -1,4 +1,4 @@
-import 'package:billcare/api/api_service.dart'; // Assumed dependency
+import 'package:billcare/api/api_service.dart';
 import 'package:billcare/admin/items/add.dart';
 import 'package:billcare/admin/items/category.dart';
 import 'package:flutter/material.dart';
@@ -149,9 +149,7 @@ class _ItemScreenState extends State<ItemScreen>
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Dialog(
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-              ),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -246,7 +244,7 @@ class _ItemScreenState extends State<ItemScreen>
         leading: BackButton(),
         iconTheme: IconThemeData(color: Colors.white),
         title: const Text(
-          'Items',
+          'Items & Categories',
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -333,15 +331,8 @@ class ProductTab extends StatefulWidget {
 class _ProductTabState extends State<ProductTab> {
   TextEditingController searchController = TextEditingController();
   List<dynamic> filteredItems = [];
-  final List<Color> cardColors = [
-    Colors.blue.shade50,
-    Colors.green.shade50,
-    Colors.orange.shade50,
-    Colors.purple.shade50,
-    Colors.teal.shade50,
-    Colors.red.shade50,
-    Colors.indigo.shade50,
-  ];
+  bool stockAscending = true;
+
   @override
   void initState() {
     super.initState();
@@ -356,6 +347,19 @@ class _ProductTabState extends State<ProductTab> {
       filteredItems = widget.items;
       _filterItems(); // Re-filter when items are updated
     }
+  }
+
+  void _sortByStock(bool ascending) {
+    setState(() {
+      stockAscending = ascending;
+
+      filteredItems.sort((a, b) {
+        final stockA = double.tryParse(a['Stock']?.toString() ?? '0') ?? 0;
+        final stockB = double.tryParse(b['Stock']?.toString() ?? '0') ?? 0;
+
+        return ascending ? stockA.compareTo(stockB) : stockB.compareTo(stockA);
+      });
+    });
   }
 
   void _filterItems() {
@@ -425,6 +429,40 @@ class _ProductTabState extends State<ProductTab> {
     return Column(
       children: [
         Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.filter_alt_rounded,
+                size: 18,
+                color: Colors.blue,
+              ),
+              const SizedBox(width: 6),
+
+              const Text(
+                "Stock:",
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+
+              const SizedBox(width: 8),
+
+              ChoiceChip(
+                label: const Text("Low → High"),
+                selected: stockAscending,
+                onSelected: (_) => _sortByStock(true),
+              ),
+
+              const SizedBox(width: 8),
+
+              ChoiceChip(
+                label: const Text("High → Low"),
+                selected: !stockAscending,
+                onSelected: (_) => _sortByStock(false),
+              ),
+            ],
+          ),
+        ),
+        Padding(
           padding: const EdgeInsets.all(6),
           child: TextField(
             controller: searchController,
@@ -460,7 +498,6 @@ class _ProductTabState extends State<ProductTab> {
                     padding: const EdgeInsets.only(bottom: 80),
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
-                      final cardColor = cardColors[index % cardColors.length];
                       final item = filteredItems[index];
 
                       final itemName = item['Name'] ?? 'N/A';
@@ -497,7 +534,6 @@ class _ProductTabState extends State<ProductTab> {
                         },
                         child: Card(
                           elevation: 2,
-                          color: cardColor,
 
                           margin: const EdgeInsets.symmetric(
                             horizontal: 8,

@@ -18,7 +18,6 @@ void main() async {
     debugPrint("🔥 Firebase init error: $e");
   }
 
-  // ⚠️ IMPORTANT: iOS-safe background handler
   FirebaseMessaging.onBackgroundMessage(
       _firebaseMessagingBackgroundHandler);
 
