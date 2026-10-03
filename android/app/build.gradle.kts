@@ -17,7 +17,7 @@ android {
         applicationId = "com.techinnovationapp.billcare"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
-        versionCode = 7
+        versionCode = 8
         versionName = "2.0.0"
     }
 

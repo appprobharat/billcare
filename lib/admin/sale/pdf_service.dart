@@ -7,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:html/dom.dart' as html_dom;
-import 'package:flutter/services.dart' show rootBundle;
 
 class PdfService {
   static String numberToWords(double number) {
@@ -200,13 +199,54 @@ class PdfService {
     Map<String, dynamic> fullSaleData,
   ) async {
     final pdf = pw.Document();
-    final logoData = await rootBundle.load('assets/images/logo.png');
-
-    final logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
-    final invoiceNo = fullSaleData['RefNo']?.toString() ?? '-';
-    final date = fullSaleData['Date']?.toString() ?? '-';
 
     final company = Map<String, dynamic>.from(fullSaleData['Company'] ?? {});
+
+    // Backend se logo URL
+    final logoUrl = company['Logo']?.toString().trim() ?? '';
+
+    pw.MemoryImage? logoImage;
+
+    if (logoUrl.isNotEmpty && logoUrl != 'null') {
+      try {
+        print('LOGO URL => $logoUrl');
+
+        final client = HttpClient();
+        final request = await client.getUrl(Uri.parse(logoUrl));
+        final response = await request.close();
+
+        print('LOGO STATUS => ${response.statusCode}');
+        print('LOGO CONTENT TYPE => ${response.headers.contentType}');
+
+        final bytes = await response.fold<List<int>>(<int>[], (
+          previous,
+          element,
+        ) {
+          previous.addAll(element);
+          return previous;
+        });
+
+        client.close();
+
+        if (response.statusCode == 200 && bytes.isNotEmpty) {
+          final contentType = response.headers.contentType?.mimeType ?? '';
+
+          if (contentType.startsWith('image/')) {
+            logoImage = pw.MemoryImage(Uint8List.fromList(bytes));
+
+            print('LOGO LOADED SUCCESSFULLY');
+          } else {
+            print('LOGO IS NOT AN IMAGE => $contentType');
+          }
+        } else {
+          print('LOGO DOWNLOAD FAILED');
+        }
+      } catch (e) {
+        print('LOGO IMAGE ERROR => $e');
+      }
+    }
+    final invoiceNo = fullSaleData['RefNo']?.toString() ?? '-';
+    final date = fullSaleData['Date']?.toString() ?? '-';
 
     final companyName = company['Name']?.toString() ?? '-';
     final companyContact = company['ContactNo']?.toString() ?? '-';
@@ -290,7 +330,7 @@ class PdfService {
       final igstAmount = taxableAmt * igstRate / 100;
 
       final gstAmt = cgstAmount + sgstAmount + igstAmount;
-  subTotal += taxableAmt;
+      subTotal += taxableAmt;
       discount += disc;
       gstTotal += gstAmt;
     }
@@ -310,27 +350,21 @@ class PdfService {
       final discountAmount =
           double.tryParse(item['Discount']?.toString() ?? '0') ?? 0;
 
-     final cgstRate =
-    double.tryParse(item['CGST']?.toString() ?? '0') ?? 0;
+      final cgstRate = double.tryParse(item['CGST']?.toString() ?? '0') ?? 0;
 
-final sgstRate =
-    double.tryParse(item['SGST']?.toString() ?? '0') ?? 0;
+      final sgstRate = double.tryParse(item['SGST']?.toString() ?? '0') ?? 0;
 
-final igstRate =
-    double.tryParse(item['IGST']?.toString() ?? '0') ?? 0;
+      final igstRate = double.tryParse(item['IGST']?.toString() ?? '0') ?? 0;
 
-final taxableValue =
-    double.tryParse(item['TaxableAmt']?.toString() ?? '0') ??
-    ((rate * qty) - discountAmount);
+      final taxableValue =
+          double.tryParse(item['TaxableAmt']?.toString() ?? '0') ??
+          ((rate * qty) - discountAmount);
 
-final cgst = taxableValue * cgstRate / 100;
-final sgst = taxableValue * sgstRate / 100;
-final igst = taxableValue * igstRate / 100;
+      final cgst = taxableValue * cgstRate / 100;
+      final sgst = taxableValue * sgstRate / 100;
+      final igst = taxableValue * igstRate / 100;
 
-final gstAmount = cgst + sgst + igst;
-
-
-    
+      final gstAmount = cgst + sgst + igst;
 
       if (!taxSummary.containsKey(hsn)) {
         taxSummary[hsn] = {
@@ -755,7 +789,9 @@ final gstAmount = cgst + sgst + igst;
                       width: 55,
                       height: 55,
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                      child: logoImage != null
+                          ? pw.Image(logoImage, fit: pw.BoxFit.contain)
+                          : pw.SizedBox(),
                     ),
 
                     pw.SizedBox(width: 10),

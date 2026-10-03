@@ -439,53 +439,67 @@ class _LedgerPageState extends State<LedgerPage> {
                                 color: const Color(0xffF7F8FA),
                                 borderRadius: BorderRadius.circular(9),
                               ),
-                              child: Row(
+                              child: Column(
                                 children: [
-                                  Expanded(
-                                    child: _infoItem(
-                                      Icons.phone_outlined,
-                                      company?["contact"]?.toString() ?? "-",
-                                    ),
+                                  // =========================
+                                  // ROW 1 - CONTACT + EMAIL
+                                  // =========================
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _infoItem(
+                                          Icons.phone_outlined,
+                                          company?["contact"]?.toString() ??
+                                              "-",
+                                        ),
+                                      ),
+
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                        child: Container(
+                                          height: 18,
+                                          width: 1,
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+
+                                      Expanded(
+                                        child: _infoItem(
+                                          Icons.email_outlined,
+                                          company?["email"]?.toString() ?? "-",
+                                        ),
+                                      ),
+                                    ],
                                   ),
 
-                                  // SPACE + DIVIDER
+                                  // =========================
+                                  // DIVIDER
+                                  // =========================
                                   Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
+                                      vertical: 6,
                                     ),
-                                    child: Container(
-                                      height: 18,
-                                      width: 1,
+                                    child: Divider(
+                                      height: 1,
+                                      thickness: 0.7,
                                       color: Colors.grey.shade300,
                                     ),
                                   ),
 
-                                  Expanded(
-                                    flex: 2,
-                                    child: _infoItem(
-                                      Icons.email_outlined,
-                                      company?["email"]?.toString() ?? "-",
-                                    ),
-                                  ),
-
-                                  // SPACE + DIVIDER
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                    ),
-                                    child: Container(
-                                      height: 18,
-                                      width: 1,
-                                      color: Colors.grey.shade300,
-                                    ),
-                                  ),
-
-                                  Expanded(
-                                    flex: 2,
-                                    child: _infoItem(
-                                      Icons.verified_outlined,
-                                      company?["gstin"]?.toString() ?? "-",
-                                    ),
+                                  // =========================
+                                  // ROW 2 - GSTIN
+                                  // =========================
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _infoItem(
+                                          Icons.verified_outlined,
+                                          company?["gstin"]?.toString() ?? "-",
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

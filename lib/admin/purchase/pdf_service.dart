@@ -186,13 +186,55 @@ class PdfService {
     Map<String, dynamic> fullSaleData,
   ) async {
     final pdf = pw.Document();
-    final logoData = await rootBundle.load('assets/images/logo.png');
+  
+    final company = Map<String, dynamic>.from(fullSaleData['Company'] ?? {});
 
-    final logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+    // Backend se logo URL
+    final logoUrl = company['Logo']?.toString().trim() ?? '';
+
+    pw.MemoryImage? logoImage;
+
+    if (logoUrl.isNotEmpty && logoUrl != 'null') {
+      try {
+        print('LOGO URL => $logoUrl');
+
+        final client = HttpClient();
+        final request = await client.getUrl(Uri.parse(logoUrl));
+        final response = await request.close();
+
+        print('LOGO STATUS => ${response.statusCode}');
+        print('LOGO CONTENT TYPE => ${response.headers.contentType}');
+
+        final bytes = await response.fold<List<int>>(<int>[], (
+          previous,
+          element,
+        ) {
+          previous.addAll(element);
+          return previous;
+        });
+
+        client.close();
+
+        if (response.statusCode == 200 && bytes.isNotEmpty) {
+          final contentType = response.headers.contentType?.mimeType ?? '';
+
+          if (contentType.startsWith('image/')) {
+            logoImage = pw.MemoryImage(Uint8List.fromList(bytes));
+
+            print('LOGO LOADED SUCCESSFULLY');
+          } else {
+            print('LOGO IS NOT AN IMAGE => $contentType');
+          }
+        } else {
+          print('LOGO DOWNLOAD FAILED');
+        }
+      } catch (e) {
+        print('LOGO IMAGE ERROR => $e');
+      }
+    }
     final invoiceNo = fullSaleData['RefNo']?.toString() ?? '-';
     final date = fullSaleData['Date']?.toString() ?? '-';
 
-    final company = Map<String, dynamic>.from(fullSaleData['Company'] ?? {});
 
     final companyName = company['Name']?.toString() ?? '-';
     final companyContact = company['ContactNo']?.toString() ?? '-';
@@ -742,7 +784,9 @@ class PdfService {
                       width: 55,
                       height: 55,
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+                     child: logoImage != null
+                          ? pw.Image(logoImage, fit: pw.BoxFit.contain)
+                          : pw.SizedBox(),
                     ),
 
                     pw.SizedBox(width: 10),

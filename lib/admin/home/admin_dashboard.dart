@@ -5,8 +5,8 @@ import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/admin/clients/details.dart';
 import 'package:billcare/admin/employee/details.dart';
 import 'package:billcare/admin/graphs/income_expense_graph.dart';
-import 'package:billcare/home/dashboard_insights.dart';
-import 'package:billcare/home/leftsidebar.dart';
+import 'package:billcare/admin/home/dashboard_insights.dart';
+import 'package:billcare/admin/home/leftsidebar.dart';
 import 'package:billcare/admin/income_expense/category_list.dart';
 import 'package:billcare/admin/income_expense/income_list.dart';
 import 'package:billcare/admin/items/itemspage.dart';
@@ -54,13 +54,71 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+
     _safeAuthCheck();
     _loadSavedData();
     _loadCompanyName();
-    fetchDashboardData();
     _syncFcmToken();
-    loadCompanies();
-    loadSessions();
+
+    _initializeCompanySession();
+  }
+
+  Future<void> _initializeCompanySession() async {
+    try {
+      if (!mounted) return;
+
+      setState(() {
+        graphLoading = true;
+      });
+
+      // 1. Companies load
+      final companyRes = await ApiService.postRequest(endpoint: "/get_company");
+
+      if (companyRes == null) {
+        debugPrint("❌ Company API failed");
+        return;
+      }
+
+      final companies = List<Map<String, dynamic>>.from(companyRes);
+
+      if (companies.isEmpty) {
+        debugPrint("❌ No company found");
+        return;
+      }
+
+      companyList = companies;
+
+      // 2. Default company select
+      final defaultCompany = companyList.firstWhere(
+        (e) => e['is_default'].toString() == '1',
+        orElse: () => companyList.first,
+      );
+
+      selectedCompany = defaultCompany;
+      companyName = defaultCompany['Name'].toString();
+
+      if (mounted) {
+        setState(() {});
+      }
+
+      debugPrint("🏢 Default Company: ${selectedCompany?['Name']}");
+
+      // 3. Company ke sessions load
+      await loadSessions();
+
+      // 4. Ab current company + session ke according dashboard
+      await fetchDashboardData();
+
+      debugPrint("✅ Initial Company + Session loaded");
+    } catch (e) {
+      debugPrint("❌ _initializeCompanySession ERROR: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          graphLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> fetchDashboardData() async {
@@ -69,7 +127,10 @@ class _DashboardPageState extends State<DashboardPage> {
     });
 
     final response = await ApiService.postRequest(endpoint: "/dashboard");
-
+    debugPrint("========== DASHBOARD RESPONSE ==========");
+    debugPrint("$response");
+    debugPrint("========================================");
+    if (!mounted) return;
     if (response != null && response["status"] == true) {
       setState(() {
         dashboardData = response["data"];
@@ -112,83 +173,299 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> loadCompanies() async {
-    final res = await ApiService.postRequest(endpoint: "/get_company");
+  // Future<void> loadCompanies() async {
+  //   final res = await ApiService.postRequest(endpoint: "/get_company");
 
-    if (res != null) {
-      companyList = List<Map<String, dynamic>>.from(res);
+  //   if (res != null) {
+  //     companyList = List<Map<String, dynamic>>.from(res);
 
-      selectedCompany = companyList.firstWhere(
-        (e) => e['is_default'] == 1,
-        orElse: () => companyList.first,
+  //     selectedCompany = companyList.firstWhere(
+  //       (e) => e['is_default'] == 1,
+  //       orElse: () => companyList.first,
+  //     );
+
+  //     setState(() {});
+  //   }
+  // }
+
+  Future<void> loadSessions({int? preferredSessionId}) async {
+    try {
+      final res = await ApiService.postRequest(endpoint: "/get_session");
+
+      if (res == null) {
+        debugPrint("❌ Session API failed");
+        return;
+      }
+
+      sessionList = List<Map<String, dynamic>>.from(res);
+
+      // No session
+      if (sessionList.isEmpty) {
+        selectedSession = null;
+
+        if (mounted) {
+          setState(() {});
+        }
+
+        debugPrint("⚠️ No session found");
+        return;
+      }
+
+      // --------------------------------------------------
+      // 1. Agar preferred session available hai
+      // --------------------------------------------------
+
+      if (preferredSessionId != null) {
+        final matchingSession = sessionList.where(
+          (e) => e['id'].toString() == preferredSessionId.toString(),
+        );
+
+        if (matchingSession.isNotEmpty) {
+          selectedSession = matchingSession.first;
+
+          debugPrint(
+            "📅 Same Session selected: "
+            "${selectedSession?['Name']}",
+          );
+
+          if (mounted) {
+            setState(() {});
+          }
+
+          return;
+        }
+      }
+
+      // --------------------------------------------------
+      // 2. Otherwise default session
+      // --------------------------------------------------
+
+      final defaultSessions = sessionList.where(
+        (e) => e['is_default'].toString() == '1',
       );
 
-      setState(() {});
+      selectedSession = defaultSessions.isNotEmpty
+          ? defaultSessions.first
+          : sessionList.first;
+
+      debugPrint("📅 Default Session: ${selectedSession?['Name']}");
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint("❌ loadSessions ERROR: $e");
     }
   }
 
-  Future<void> loadSessions() async {
-    final res = await ApiService.postRequest(endpoint: "/get_session");
+  Future<void> refreshAllData() async {
+    if (!mounted) return;
 
-    if (res != null) {
-      sessionList = List<Map<String, dynamic>>.from(res);
+    setState(() {
+      graphLoading = true;
+    });
 
-      selectedSession = sessionList.firstWhere(
-        (e) => e['is_default'] == 1,
-        orElse: () => sessionList.first,
+    await fetchDashboardData();
+
+    await salesPageKey.currentState?.refreshList();
+
+    await purchasePageKey.currentState?.refreshList();
+
+    if (!mounted) return;
+
+    setState(() {
+      graphLoading = false;
+    });
+  }
+
+  Future<void> setSession(int sessionId) async {
+    try {
+      if (!mounted) return;
+
+      setState(() {
+        graphLoading = true;
+      });
+
+      final res = await ApiService.postRequest(
+        endpoint: "/set_session",
+        body: {"SessionId": sessionId.toString()},
       );
 
-      setState(() {});
+      if (res != null && res['status'] == true) {
+        // New session token
+        await AuthStorage.saveToken(res['token'].toString());
+
+        // Selected session update
+        final session = sessionList.firstWhere(
+          (e) => e['id'].toString() == sessionId.toString(),
+          orElse: () => <String, dynamic>{},
+        );
+
+        if (session.isNotEmpty && mounted) {
+          setState(() {
+            selectedSession = session;
+          });
+        }
+
+        // New Session data
+        await refreshAllData();
+
+        debugPrint("=================================");
+        debugPrint("✅ SESSION CHANGED");
+        debugPrint("🏢 Company: ${selectedCompany?['Name']}");
+        debugPrint("📅 Session: ${selectedSession?['Name']}");
+        debugPrint("=================================");
+      } else {
+        debugPrint("❌ Session change failed");
+      }
+    } catch (e) {
+      debugPrint("❌ setSession ERROR: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          graphLoading = false;
+        });
+      }
     }
   }
 
   Future<void> setCompany(int companyId) async {
-    final res = await ApiService.postRequest(
-      endpoint: "/set_company",
-      body: {"CompanyId": companyId.toString()},
-    );
-
-    if (res != null && res['status'] == true) {
-      String newToken = res['token'];
-
-      await AuthStorage.saveToken(newToken);
-
- 
-      final company = companyList.firstWhere((e) => e['id'] == companyId);
-
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString('companyName', company['Name'].toString());
-
+    try {
       if (!mounted) return;
 
       setState(() {
-        selectedCompany = company;
-        companyName = company['Name'].toString();
+        graphLoading = true;
       });
 
-      await loadCompanies();
+      // --------------------------------------------------
+      // CURRENT SESSION SAVE
+      // --------------------------------------------------
 
-      print("✅ Company Changed");
-    }
-  }
+      final int? currentSessionId = selectedSession?['id'] == null
+          ? null
+          : int.tryParse(selectedSession!['id'].toString());
 
-  Future<void> setSession(int sessionId) async {
-    final res = await ApiService.postRequest(
-      endpoint: "/set_session",
-      body: {"SessionId": sessionId.toString()},
-    );
+      debugPrint("🔄 Changing Company...");
 
-    if (res != null && res['status'] == true) {
-      await AuthStorage.saveToken(res['token']);
+      debugPrint("📅 Current Session ID: $currentSessionId");
 
-      await loadSessions();
+      // --------------------------------------------------
+      // 1. CHANGE COMPANY
+      // --------------------------------------------------
 
-      await fetchDashboardData();
-      await salesPageKey.currentState?.refreshList();
-      await purchasePageKey.currentState?.refreshList();
+      final companyRes = await ApiService.postRequest(
+        endpoint: "/set_company",
+        body: {"CompanyId": companyId.toString()},
+      );
 
-      if (mounted) setState(() {});
+      if (companyRes == null || companyRes['status'] != true) {
+        debugPrint("❌ Company change failed");
+        return;
+      }
+
+      // --------------------------------------------------
+      // 2. SAVE COMPANY TOKEN
+      // --------------------------------------------------
+
+      final companyToken = companyRes['token']?.toString();
+
+      if (companyToken != null && companyToken.isNotEmpty) {
+        await AuthStorage.saveToken(companyToken);
+      }
+
+      // --------------------------------------------------
+      // 3. FIND SELECTED COMPANY
+      // --------------------------------------------------
+
+      final company = companyList.firstWhere(
+        (e) => e['id'].toString() == companyId.toString(),
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (company.isEmpty) {
+        debugPrint("❌ Company not found");
+        return;
+      }
+
+      selectedCompany = company;
+      companyName = company['Name'].toString();
+
+      // Save company name
+      final prefs = await SharedPreferences.getInstance();
+
+      await prefs.setString('companyName', companyName);
+
+      if (mounted) {
+        setState(() {});
+      }
+
+      debugPrint("🏢 Company changed: $companyName");
+
+      // --------------------------------------------------
+      // 4. LOAD NEW COMPANY SESSIONS
+      // --------------------------------------------------
+
+      await loadSessions(preferredSessionId: currentSessionId);
+
+      // --------------------------------------------------
+      // 5. CHECK WHICH SESSION IS SELECTED
+      // --------------------------------------------------
+
+      if (selectedSession == null) {
+        debugPrint("⚠️ No session available for new company");
+
+        return;
+      }
+
+      debugPrint(
+        "📅 Selected Session: "
+        "${selectedSession?['Name']}",
+      );
+
+      // --------------------------------------------------
+      // 6. APPLY SESSION TO NEW COMPANY
+      // --------------------------------------------------
+
+      final sessionRes = await ApiService.postRequest(
+        endpoint: "/set_session",
+        body: {"SessionId": selectedSession!['id'].toString()},
+      );
+
+      if (sessionRes == null || sessionRes['status'] != true) {
+        debugPrint("❌ Session apply failed after company change");
+
+        return;
+      }
+
+      // --------------------------------------------------
+      // 7. SAVE FINAL COMPANY + SESSION TOKEN
+      // --------------------------------------------------
+
+      final finalToken = sessionRes['token']?.toString();
+
+      if (finalToken != null && finalToken.isNotEmpty) {
+        await AuthStorage.saveToken(finalToken);
+      }
+
+      // --------------------------------------------------
+      // 8. REFRESH ALL DATA
+      // --------------------------------------------------
+
+      await refreshAllData();
+
+      debugPrint("=================================");
+      debugPrint("✅ COMPANY CHANGED SUCCESSFULLY");
+      debugPrint("🏢 Company: $companyName");
+      debugPrint("📅 Session: ${selectedSession?['Name']}");
+      debugPrint("=================================");
+    } catch (e) {
+      debugPrint("❌ setCompany ERROR: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          graphLoading = false;
+        });
+      }
     }
   }
 
@@ -247,13 +524,8 @@ class _DashboardPageState extends State<DashboardPage> {
               title: Row(
                 children: [
                   PopupMenuButton<Map<String, dynamic>>(
-                    onSelected: (value) {
-                      setState(() {
-                        companyName = value['Name'];
-                        selectedCompany = value;
-                      });
-
-                      setCompany(value['id']);
+                    onSelected: (value) async {
+                      await setCompany(int.parse(value['id'].toString()));
                     },
                     itemBuilder: (context) {
                       return companyList.map((company) {
@@ -290,12 +562,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   // 🔹 SESSION DROPDOWN (RIGHT)
                   PopupMenuButton<Map<String, dynamic>>(
                     onSelected: (value) async {
-                      setState(() {
-                        selectedSession = value;
-                      });
-
-                      // Save selected session
-                      await setSession(value['id']);
+                      await setSession(int.parse(value['id'].toString()));
                     },
                     itemBuilder: (context) {
                       return sessionList.map((session) {
@@ -550,18 +817,18 @@ class _DashboardPageState extends State<DashboardPage> {
                                 },
                               ),
                               quickCard(
-                          Icons.inventory_2,
-                          "Item-Report",
-                          Colors.lightGreen,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ItemStockPage(),
+                                Icons.inventory_2,
+                                "Item-Report",
+                                Colors.lightGreen,
+                                () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ItemStockPage(),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                               quickCard(
                                 Icons.swap_horiz,
                                 "Transaction",
@@ -629,18 +896,18 @@ class _DashboardPageState extends State<DashboardPage> {
                                 },
                               ),
                               quickCard(
-                          Icons.swap_horiz,
-                          "Transaction",
-                          Colors.redAccent,
-                          () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => TransactionPage(),
+                                Icons.swap_horiz,
+                                "Transaction",
+                                Colors.redAccent,
+                                () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TransactionPage(),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                               quickCard(
                                 Icons.category,
                                 "Category",

@@ -33,6 +33,17 @@ class MyApp extends StatelessWidget {
       title: 'BillCare',
       debugShowCheckedModeBanner: false,
       theme: blueGoldTheme,
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: const TextScaler.linear(1.0),
+          ),
+          child: child!,
+        );
+      },
+
       home: const SplashScreen(),
     );
   }

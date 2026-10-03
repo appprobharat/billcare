@@ -1,7 +1,7 @@
 import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/admin/clients/details.dart';
 import 'package:billcare/api/api_service.dart';
-import 'package:billcare/home/admin_dashboard.dart';
+import 'package:billcare/admin/home/admin_dashboard.dart';
 import 'package:billcare/admin/report/item_stock.dart';
 import 'package:billcare/admin/report/state_wise_report.dart';
 import 'package:billcare/admin/sale_approval/approve_sale.dart';

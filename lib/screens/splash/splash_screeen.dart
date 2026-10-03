@@ -1,5 +1,5 @@
 import 'package:billcare/SalesManFolder/salesman_dashboard.dart';
-import 'package:billcare/home/admin_dashboard.dart';
+import 'package:billcare/admin/home/admin_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:billcare/api/auth_helper.dart';
 import 'package:billcare/screens/login.dart';

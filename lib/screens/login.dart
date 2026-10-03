@@ -2,7 +2,7 @@ import 'package:billcare/SalesManFolder/salesman_dashboard.dart';
 import 'package:billcare/Usersfolder/user_Dashboard.dart';
 import 'package:billcare/api/api_service.dart';
 import 'package:billcare/api/auth_helper.dart';
-import 'package:billcare/home/admin_dashboard.dart';
+import 'package:billcare/admin/home/admin_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
